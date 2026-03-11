@@ -12,8 +12,6 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-
-
 @app.post("/assignments/", status_code=status.HTTP_201_CREATED, response_model=AssignmentResponse)
 def create_assignment(assignment: AssignmentCreate, db: Session = Depends(get_db)):
     db_assignment = Assignment(name = assignment.name, course= assignment.course, course_id= assignment.course_id, due_date= assignment.due_date, due_time= assignment.due_time, assignment_type= assignment.assignment_type, priority_level= assignment.priority_level, points= assignment.points)

@@ -108,5 +108,10 @@ def index():
 def about():
     return render_template("calendar.html")
 
+# Assignment page route
+@app.route("/assignments/")
+def assignment():
+    return render_template("assignments.html")
+
 if __name__ == '__main__':
     app.run(debug=True)
