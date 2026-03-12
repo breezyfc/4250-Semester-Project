@@ -4,8 +4,11 @@
 {% block title %}CALENDAR{% endblock %}
 
 {% block content %}
-<h2>Calendrier <em>Calendar Page</em></h2>
-<p>This page is dedicated to the calendar.</p>
+<div class="heading-container">
+    <img src="/static/images/logo.png" alt="Home icon" class="icon-img">
+    <h1 class="page-title">Calendrier - Calendar Page</h1>
+</div>
+
 <link rel="stylesheet" href="{{ url_for('static', filename='calendar.css') }}">
 
 <div class="calendar-center-wrapper">
@@ -20,7 +23,7 @@
 </div>
 
 <script>
-
+ // some js code for the calendar to get the functionality that we need for the calendar
   // day of calendar info 
   var days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
   var months = ["January","February","March","April","May","June",
