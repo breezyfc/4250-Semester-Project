@@ -82,7 +82,7 @@ def login():
         if user and user.check_password(password):
             login_user(user)
             flash("User logged in successfully!", "success")
-            return redirect(url_for('seeker_index'))
+            return redirect(url_for('index'))
 
         flash("Invalid username or password.", "error")
         return redirect(url_for("login"))
