@@ -19,7 +19,6 @@
   padding: 2rem;
   align-content: center;
   width: 70%;
-  /*max-width: 420px;*/
   box-shadow: var(--shadow);
   border: 1px solid var(--border);
 }
