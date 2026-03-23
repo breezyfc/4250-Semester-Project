@@ -5,7 +5,9 @@ from app.models import db, Assignment
 
 def parse_ics_date(ics_date_str):
     # Example: 20260313T235900Z -> datetime
-    return datetime.strptime(ics_date_str[:15], "%Y%m%dT%H%M%S")
+    # Stripping it to get into a format that can be parsed
+    parsed = datetime.strptime(ics_date_str[:15], "%Y%m%dT%H%M%S")
+    return parsed.strftime("%Y-%m-%d")
 
 def sync_assignments(user):
     if not user.ics_url:
@@ -31,13 +33,13 @@ def sync_assignments(user):
 
         # Check for duplicates
         existing = Assignment.query.filter_by(
-            title=title,
+            name=title,
             due_date=due_date,
             user_id=user.id
         ).first()
 
         if not existing:
-            assignment = Assignment(title=title, due_date=due_date, user_id=user.id)
+            assignment = Assignment(name=title, due_date=due_date, user_id=user.id)
             db.session.add(assignment)
 
     db.session.commit()

@@ -15,6 +15,7 @@ from flask_login import LoginManager, login_user, login_required, logout_user, c
 from app.models import db, User, Assignment
 from flask_application.decorators import admin_required
 import requests
+from sqlalchemy import text
 from sync import sync_assignments
 
 app = Flask(__name__)
@@ -32,6 +33,13 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db.init_app(app) 
 with app.app_context():
     db.create_all()
+    # create_all will not add new columns to existing tables, so patch schema if needed
+    assignment_cols = db.session.execute(text("PRAGMA table_info(assignments)")).fetchall()
+    assignment_col_names = {col[1] for col in assignment_cols}
+    # if the user id is not in the assignment columns then we are going to add it 
+    if "user_id" not in assignment_col_names:
+        db.session.execute(text("ALTER TABLE assignments ADD COLUMN user_id INTEGER"))
+        db.session.commit()
 
 # set up login manager for aid with...logging in
 login_manager = LoginManager(app)
