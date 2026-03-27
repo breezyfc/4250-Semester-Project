@@ -8,7 +8,7 @@
 <div class="assignments-section">
     <div class="assignments-header">
         <h3>Add New Assignment</h2>
-        <button type="button" class="add-assignment-btn" id="openFormBtn">+</button>    
+        <button type="button" class="add-assignment-btn" id="openFormBtn">+</button>
     </div>
 
     <ul class="assignments-list">
@@ -23,7 +23,7 @@
     </ul>
 </div>
 
-<div id="formOverlay" class:"form-overlay">
+<div id="formOverlay" class="form-overlay hidden">
         <div class="form-container">
             <h3>Add New Assignment</h3>
         
@@ -50,24 +50,31 @@
                 </div>
         </form>
 </div>
-<script>
-    const openFromBtn = document.getElementById('openFormBtn');
-    const closeFormBtn = document.getElementById('closeFormBtn');
-    const formOverlay = document.getElementById('formOverlay');
-    
-    openFromBtn.addEventListener('click', () => {
-        formOverlay.classList.remove ("hidden");
-    });
 
-    closeFormBtn.addEventListener('click', () => {
-        formOverlay.classList.add ("hidden");
-    });
-    
-    formOverlay.addEventListener('click', (e) => {
-        if (e.target === formOverlay) {
-            formOverlay.classList.add('hidden');
-        }
-    });
+<script>
+    const openFormBtn = document.getElementById("openFormBtn");
+    const closeFormBtn = document.getElementById("closeFormBtn");
+    const formOverlay = document.getElementById("formOverlay");
+
+    if (openFormBtn && formOverlay) {
+        openFormBtn.addEventListener("click", () => {
+            formOverlay.classList.remove("hidden");
+        });
+    }
+
+    if (closeFormBtn && formOverlay) {
+        closeFormBtn.addEventListener("click", () => {
+            formOverlay.classList.add("hidden");
+        });
+    }
+
+    if (formOverlay) {
+        formOverlay.addEventListener("click", (e) => {
+            if (e.target === formOverlay) {
+                formOverlay.classList.add("hidden");
+            }
+        });
+    }
 </script>
 
 {% endblock %}

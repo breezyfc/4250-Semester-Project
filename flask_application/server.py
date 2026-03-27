@@ -111,7 +111,20 @@ def logout():
 def index():
     #response = requests.get(f'{URL}/assignments/')
     #assignments = response.json()
-    return render_template('index.html')#, assignments=assignments)
+    return render_template('index.html', assignments=[])#, assignments=assignments)
+
+
+#Create new assignment form 
+@app.route("/assignments/new", methods=["GET", "POST"])
+def new_assignment():
+    if request.method == "POST":
+        title = request.form.get("name")
+        course = request.form.get("class")
+        due_date = request.form.get("due_date")
+        priority = request.form.get("priority")
+
+        return redirect(url_for("index"))
+    return redirect(url_for("index"))
 
 # Calendar page route
 @app.route("/calendar/")
