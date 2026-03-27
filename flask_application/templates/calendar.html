@@ -145,7 +145,14 @@ Connect Calendar
       }
 
       dayBox.addEventListener('click', function() {
+        // remove existing selected state
+        var previous = document.querySelector('.cal-day.selected');
+        if (previous) previous.classList.remove('selected');
+
+        // apply selected state and track selected date
+        this.classList.add('selected');
         selectedDate = this.textContent;
+
         var selectedKey = formatDayKey(year, month, parseInt(this.textContent, 10));
         renderAssignmentList(selectedKey);
       });
