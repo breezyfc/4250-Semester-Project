@@ -40,6 +40,7 @@ body{
   font-family: var(--font);
   background: var(--bg);
   color: var(--text);
+  padding-top: 120px;
 }
 
 .page{
