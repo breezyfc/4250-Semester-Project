@@ -54,6 +54,28 @@ login_manager.login_message_category = 'error'
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+@app.route("/account", methods=["GET", "POST"])
+@login_required
+def account():
+    if request.method == "POST":
+        new_password = request.form.get("password")
+        ics_url = request.form.get("ics_url")
+
+        if new_password:
+            current_user.set_password(new_password)
+
+        if ics_url:
+            current_user.ics_url = ics_url
+
+        db.session.commit()
+        flash("Account updated!", "success")
+        return redirect(url_for("account"))
+
+    return render_template("account.html")
+
+
+
+
 # 3 routes -- login, logout, register
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -117,7 +139,22 @@ def index():
 @app.route("/calendar/")
 @login_required
 def about():
-    return render_template("calendar.html")
+    raw_assignments = Assignment.query.filter_by(user_id=current_user.id).all()
+    assignments = [
+        {
+            'id': a.id,
+            'name': a.name,
+            'course': a.course,
+            'course_id': a.course_id,
+            'due_date': a.due_date,
+            'due_time': a.due_time,
+            'assignment_type': a.assignment_type,
+            'priority_level': a.priority_level,
+            'points': a.points,
+        }
+        for a in raw_assignments
+    ]
+    return render_template("calendar.html", assignments=assignments)
 
 
 #connect calendar route

@@ -23,8 +23,11 @@
             {% for assignment in assignments %}
 
                 <div class="assignment-card">
-                    <h3>{{ assignment.title }}</h3>
-                    <p>Due: {{ assignment.due_date }}</p>
+                    <h3>{{ assignment.name }}</h3>
+                    <p><strong>Course:</strong> {{ assignment.course or 'None' }} ({{ assignment.course_id }})</p>
+                    <p><strong>Due date:</strong> {{ assignment.due_date }} <strong>Time:</strong> {{ assignment.due_time or 'N/A' }}</p>
+                    <p><strong>Type:</strong> {{ assignment.assignment_type or 'N/A' }} | <strong>Priority:</strong> {{ assignment.priority_level or 'N/A' }}</p>
+                    <p><strong>Points:</strong> {{ assignment.points or 'N/A' }}</p>
                 </div>
 
             {% endfor %}
