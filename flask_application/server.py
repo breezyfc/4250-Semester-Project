@@ -117,7 +117,22 @@ def index():
 @app.route("/calendar/")
 @login_required
 def about():
-    return render_template("calendar.html")
+    raw_assignments = Assignment.query.filter_by(user_id=current_user.id).all()
+    assignments = [
+        {
+            'id': a.id,
+            'name': a.name,
+            'course': a.course,
+            'course_id': a.course_id,
+            'due_date': a.due_date,
+            'due_time': a.due_time,
+            'assignment_type': a.assignment_type,
+            'priority_level': a.priority_level,
+            'points': a.points,
+        }
+        for a in raw_assignments
+    ]
+    return render_template("calendar.html", assignments=assignments)
 
 
 #connect calendar route
