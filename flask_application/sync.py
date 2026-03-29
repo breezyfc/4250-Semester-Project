@@ -1,4 +1,5 @@
 # sync.py
+import re
 import requests
 from datetime import datetime
 from app.models import db, Assignment
@@ -8,6 +9,15 @@ def parse_ics_date(ics_date_str):
     # Stripping it to get into a format that can be parsed
     parsed = datetime.strptime(ics_date_str[:15], "%Y%m%dT%H%M%S")
     return parsed.strftime("%Y-%m-%d")
+
+def parse_course_id(title):
+    # ICS title might include numeric course code (e.g., 4500, 3301).
+    # The DB enforces exactly 4 digit course_id with CHECK constraint.
+    match = re.search(r"\b(\d{4})\b", title)
+    if match:
+        return match.group(1)
+    # Common fallback when no course is found
+    return "0000"
 
 def sync_assignments(user):
     if not user.ics_url:
@@ -39,7 +49,17 @@ def sync_assignments(user):
         ).first()
 
         if not existing:
-            assignment = Assignment(name=title, due_date=due_date, user_id=user.id)
+            # Normalize course data for ICS events so INSERT honors required constraints.
+            course = title
+            course_id = parse_course_id(title)
+
+            assignment = Assignment(
+                name=title,
+                due_date=due_date,
+                user_id=user.id,
+                course=course,
+                course_id=course_id,
+            )
             db.session.add(assignment)
 
     db.session.commit()
