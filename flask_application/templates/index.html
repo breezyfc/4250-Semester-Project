@@ -28,10 +28,10 @@
         <h3>Add New Assignment</h3>
 
         <form method="POST" action="/assignments/new">
-            <label for="name">Assignment Name:</label>
+            <label for="name">Assignment Name</label>
             <input type="text" id="name" name="name" placeholder="Assignment Name" required>
 
-            <label for="class">Class</label>
+            <label for="course">Class</label>
             <input type="text" id="course" name="course" required>
 
             <label for="due_date">Due Date</label>
@@ -47,36 +47,32 @@
 
             <div class="form-buttons">
                 <button type="button" id="closeFormBtn" class="cancel-btn">Cancel</button>
-                <button type="submit" id="submitFormBtn" class="submit-btn">Submit</button>
+                <button type="submit" class="submit-btn">Submit</button>
             </div>
         </form>
     </div>
 </div>
 
 <script>
-    const openFormBtn = document.getElementById("openFormBtn");
-    const closeFormBtn = document.getElementById("closeFormBtn");
-    const formOverlay = document.getElementById("formOverlay");
+document.addEventListener("DOMContentLoaded", function () {
+    const openBtn = document.getElementById("openFormBtn");
+    const closeBtn = document.getElementById("closeFormBtn");
+    const overlay = document.getElementById("formOverlay");
 
-    if (openFormBtn && formOverlay) {
-        openFormBtn.addEventListener("click", () => {
-            formOverlay.classList.remove("hidden");
-        });
-    }
+    openBtn.addEventListener("click", function () {
+        overlay.classList.remove("hidden");
+    });
 
-    if (closeFormBtn && formOverlay) {
-        closeFormBtn.addEventListener("click", () => {
-            formOverlay.classList.add("hidden");
-        });
-    }
+    closeBtn.addEventListener("click", function () {
+        overlay.classList.add("hidden");
+    });
 
-    if (formOverlay) {
-        formOverlay.addEventListener("click", (e) => {
-            if (e.target === formOverlay) {
-                formOverlay.classList.add("hidden");
-            }
-        });
-    }
+    overlay.addEventListener("click", function (e) {
+        if (e.target === overlay) {
+            overlay.classList.add("hidden");
+        }
+    });
+});
 </script>
 
 {% endblock %}
