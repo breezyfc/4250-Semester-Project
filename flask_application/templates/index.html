@@ -15,7 +15,7 @@
         {% for assignment in assignments %}
         <li class="assignment-item">
             <span class="assignment-title">{{ assignment.title }}</span>
-            <span class="assignment-due">Due: {{ assignment.due_date }}</span> 
+            <span class="assignment-due">Due: {{ assignment.due_date }}</span>
         </li>
         {% else %}
         <li>No assignments found.</li>
@@ -24,31 +24,33 @@
 </div>
 
 <div id="formOverlay" class="form-overlay hidden">
-        <div class="form-container">
-            <h3>Add New Assignment</h3>
-        
+    <div class="form-container">
+        <h3>Add New Assignment</h3>
+
         <form method="POST" action="/assignments/new">
-                <label for="name">Assignment Name:</label>
-                <input type="text" name="name" placeholder="Assignment Name" required>
-            
-                <label for="class">Class</label>
-                <input type="text" id="class" name="class" required>
+            <label for="name">Assignment Name:</label>
+            <input type="text" id="name" name="name" placeholder="Assignment Name" required>
 
-                <label for="due_date">Due Date</label>
-                <input type="date" id="due_date" name="due_date" required>
+            <label for="course">Class</label>
+            <input type="text" id="course" name="course" required>
 
-                <label for="priority">Priority</label>
-                <select id="priority" name="priority" required>
-                    <option value="">Select Priority</option>
-                    <option value="1">1 (High)</option>
-                    <option value="2">2 (Medium)</option>
-                    <option value="3">3 (Low)</option>
-                </select>
-                <div class="form-buttons">
-                    <button type="button" id="closeFormBtn" class="cancel-btn">Cancel</button>
-                    <button type="submit" id="submitFormBtn" class="submit-btn">Submit</button>
-                </div>
+            <label for="due_date">Due Date</label>
+            <input type="date" id="due_date" name="due_date" required>
+
+            <label for="priority">Priority</label>
+            <select id="priority" name="priority" required>
+                <option value="">Select Priority</option>
+                <option value="1">1 (High)</option>
+                <option value="2">2 (Medium)</option>
+                <option value="3">3 (Low)</option>
+            </select>
+
+            <div class="form-buttons">
+                <button type="button" id="closeFormBtn" class="cancel-btn">Cancel</button>
+                <button type="submit" id="submitFormBtn" class="submit-btn">Submit</button>
+            </div>
         </form>
+    </div>
 </div>
 
 <script>
