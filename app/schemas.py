@@ -10,15 +10,24 @@ class AssignmentBase(BaseModel):
     user_id: int
     name: str
     course: str
-    course_id: CourseID
+    course_id: str = "0000"
     due_date: str
-    due_time: str
-    assignment_type: str
-    priority_level: int
-    points: float
+    due_time: str | None = None
+    assignment_type: str | None = None
+    priority_level: int | None = None
+    points: float | None = None
 
 
-class AssignmentCreate(AssignmentBase):
+class AssignmentCreate(BaseModel):
+    user_id: int
+    name: str
+    course: str
+    course_id: str = "0000"
+    due_date: str
+    due_time: str | None = None #Added this because these fields are required but have no default value which would lead to a validation error. This automatically sets them to None if they are not provided in the request body.
+    assignment_type: str | None = None
+    priority_level: int | None = None
+    points: float | None = None
     pass
 
 

@@ -17,6 +17,8 @@ from flask_application.decorators import admin_required
 import requests
 from sqlalchemy import text
 from sync import sync_assignments
+import os
+
 
 app = Flask(__name__)
 app.secret_key = 'key'
@@ -26,7 +28,8 @@ URL = 'http://127.0.0.1:8000'
 
 
 # app db configs
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///./users.db"
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{os.path.join(BASE_DIR, 'users.db')}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 # sets up db with pip install flask_sqlalchemyapp
@@ -145,8 +148,10 @@ def index():
 
 
 @app.route("/assignments/new", methods=["POST"])
+@login_required
 def new_assignment():
     data = {
+        "user_id": current_user.id,
         "name": request.form.get("name"),
         "course": request.form.get("course"),
         "due_date": request.form.get("due_date"),
