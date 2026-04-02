@@ -17,6 +17,8 @@ from flask_application.decorators import admin_required
 import requests
 from sqlalchemy import text
 from sync import sync_assignments
+import os
+
 
 app = Flask(__name__)
 app.secret_key = 'key'
@@ -26,7 +28,8 @@ URL = 'http://127.0.0.1:8000'
 
 
 # app db configs
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///./users.db"
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{os.path.join(BASE_DIR, 'users.db')}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 # sets up db with pip install flask_sqlalchemyapp
@@ -39,6 +42,11 @@ with app.app_context():
     # if the user id is not in the assignment columns then we are going to add it 
     if "user_id" not in assignment_col_names:
         db.session.execute(text("ALTER TABLE assignments ADD COLUMN user_id INTEGER"))
+        db.session.commit()
+
+    # add ics_uid for robust sync if missing
+    if "ics_uid" not in assignment_col_names:
+        db.session.execute(text("ALTER TABLE assignments ADD COLUMN ics_uid VARCHAR(255)"))
         db.session.commit()
 
 # set up login manager for aid with...logging in
@@ -111,6 +119,10 @@ def login():
         user = User.query.filter_by(username=username).first()
         if user and user.check_password(password):
             login_user(user)
+
+            if user.ics_url:
+                sync_assignments(user)
+
             flash("User logged in successfully!", "success")
             return redirect(url_for('index'))
 
@@ -131,14 +143,15 @@ def logout():
 @app.route('/')
 @login_required
 def index():
-    #response = requests.get(f'{URL}/assignments/')
-    #assignments = response.json()
-    return render_template('index.html', assignments=[])#, assignments=assignments)
+    assignments = Assignment.query.filter_by(user_id=current_user.id).order_by(Assignment.due_date).all()
+    return render_template('index.html', assignments=assignments)
 
 
 @app.route("/assignments/new", methods=["POST"])
+@login_required
 def new_assignment():
     data = {
+        "user_id": current_user.id,
         "name": request.form.get("name"),
         "course": request.form.get("course"),
         "due_date": request.form.get("due_date"),
@@ -157,7 +170,10 @@ def new_assignment():
 @app.route("/calendar/")
 @login_required
 def about():
-    raw_assignments = Assignment.query.filter_by(user_id=current_user.id).all()
+    if current_user.ics_url:
+        sync_assignments(current_user)
+
+    raw_assignments = Assignment.query.filter_by(user_id=current_user.id).order_by(Assignment.due_date).all()
     assignments = [
         {
             'id': a.id,

@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db, Base, engine
 from app.schemas import AssignmentCreate, AssignmentUpdate, AssignmentResponse
-from app.models import Assignment
+from app.assignment_model import Assignment
 from pydantic import BaseModel
 
 # Please run this command to run the backend api:
@@ -14,8 +14,7 @@ app = FastAPI()
 
 @app.post("/assignments/", status_code=status.HTTP_201_CREATED, response_model=AssignmentResponse)
 def create_assignment(assignment: AssignmentCreate, db: Session = Depends(get_db)):
-    db_assignment = Assignment(name = assignment.name, course= assignment.course, course_id= assignment.course_id, due_date= assignment.due_date, due_time= assignment.due_time, assignment_type= assignment.assignment_type, priority_level= assignment.priority_level, points= assignment.points)
-    db_assignment = Assignment(**assignment.dict())
+    db_assignment = Assignment(**assignment.model_dump())
     db.add(db_assignment)
     db.commit()
     db.refresh(db_assignment)
