@@ -14,7 +14,7 @@
     <ul class="assignments-list">
         {% for assignment in assignments %}
         <li class="assignment-item">
-            <span class="assignment-title">{{ assignment.title }}</span>
+            <span class="assignment-title">{{ assignment.name }}</span>
             <span class="assignment-due">Due: {{ assignment.due_date }}</span>
         </li>
         {% else %}
