@@ -13,16 +13,28 @@
 
     <ul class="assignments-list">
         {% for assignment in assignments %}
+        {% set tag_color = assignment.class_color or '#517664' %}
         <li class="assignment-item">
-            <span class="assignment-title">{{ assignment.name }}</span>
+            
+            <div class="assignment-main">
+                <span class="assignment-title">{{ assignment.name }}</span>
+            {% if assignment.course and assignment.course != assignment.name %}
+                <span class="course-tag" data-color="{{ tag_color }}">
+                    {{ assignment.course }}
+                </span>
+            {% endif %}
+            </div>
+
             <span class="assignment-due">Due: {{ assignment.due_date }}</span>
         </li>
+
         {% else %}
         <li>No assignments found.</li>
         {% endfor %}
     </ul>
 </div>
 
+<!-- FORM OVERLAY -->
 <div id="formOverlay" class="form-overlay hidden">
     <div class="form-container">
         <h3>Add New Assignment</h3>
@@ -31,8 +43,11 @@
             <label for="name">Assignment Name</label>
             <input type="text" id="name" name="name" placeholder="Assignment Name" required>
 
-            <label for="course">Class</label>
-            <input type="text" id="course" name="course" required>
+            <label for="course">Class Name</label>
+            <input type="text" id="course" name="course" placeholder="Ex: CSCI 4250">
+
+            <label for="class_color">Class Color</label>
+            <input type="color" id="class_color" name="class_color" value="#517664">
 
             <label for="due_date">Due Date</label>
             <input type="date" id="due_date" name="due_date" required>
@@ -53,25 +68,43 @@
     </div>
 </div>
 
+<!-- SCRIPTS -->
 <script>
 document.addEventListener("DOMContentLoaded", function () {
+
+    // OPEN/CLOSE FORM
     const openBtn = document.getElementById("openFormBtn");
     const closeBtn = document.getElementById("closeFormBtn");
     const overlay = document.getElementById("formOverlay");
 
-    openBtn.addEventListener("click", function () {
-        overlay.classList.remove("hidden");
-    });
+    if (openBtn) {
+        openBtn.addEventListener("click", function () {
+            overlay.classList.remove("hidden");
+        });
+    }
 
-    closeBtn.addEventListener("click", function () {
-        overlay.classList.add("hidden");
-    });
-
-    overlay.addEventListener("click", function (e) {
-        if (e.target === overlay) {
+    if (closeBtn) {
+        closeBtn.addEventListener("click", function () {
             overlay.classList.add("hidden");
-        }
+        });
+    }
+
+    if (overlay) {
+        overlay.addEventListener("click", function (e) {
+            if (e.target === overlay) {
+                overlay.classList.add("hidden");
+            }
+        });
+    }
+
+    // APPLY COLORS TO TAGS
+    document.querySelectorAll(".course-tag").forEach(tag => {
+        const color = tag.dataset.color || "#517664";
+        tag.style.borderColor = color;
+        tag.style.color = color;
+        tag.style.backgroundColor = color + "15";
     });
+
 });
 </script>
 

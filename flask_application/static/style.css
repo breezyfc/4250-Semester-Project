@@ -1,126 +1,135 @@
-/* ==================
-Palette
-#C5E7DF (Frozen Water)
-#2F3061 (Twilight Indigo)
-#517664 (Deep Teal)
-#382619 (Dark Coffee)
-======================*/
+/* =========================
+   PALETTE
+   #C5E7DF (Frozen Water)
+   #2F3061 (Twilight Indigo)
+   #517664 (Deep Teal)
+   #382619 (Dark Coffee)
+========================= */
 
-:root{
-  --c-mint:#C5E7DF;
-  --c-indigo:#2F3061;
-  --c-teal:#517664;
-  --c-coffee:#382619;
+:root {
+  --c-mint: #C5E7DF;
+  --c-indigo: #2F3061;
+  --c-teal: #517664;
+  --c-coffee: #382619;
 
-  /* UI mapping */
-  --bg:#f7fbfa;
-  --surface:#ffffff;
+  --bg: #f7fbfa;
+  --surface: #ffffff;
   --text: var(--c-coffee);
-  --muted:#6b6b6b;
+  --muted: #6b6b6b;
   --border: rgba(47, 48, 97, 0.14);
 
   --primary: var(--c-indigo);
-  --primary-hover:#242550;
+  --primary-hover: #242550;
 
   --accent: var(--c-teal);
-  --accent-hover:#3f5e52;
+  --accent-hover: #3f5e52;
 
   --highlight: var(--c-mint);
 
-  --radius:14px;
-  --radius-sm:10px;
+  --radius: 14px;
+  --radius-sm: 10px;
   --shadow: 0 10px 30px rgba(56, 38, 25, 0.10);
 
   --font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Helvetica Neue", sans-serif;
 }
 
-* { box-sizing: border-box; }
-body{
-  margin:0;
+/* =========================
+   GLOBAL
+========================= */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
   font-family: var(--font);
   background: var(--bg);
   color: var(--text);
   padding-top: 120px;
 }
 
-.page{
+.page {
   max-width: 1100px;
   margin: 0 auto;
   padding: 24px 18px;
 }
-.card{
+
+.card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
 }
 
+/* =========================
+   NAVBAR
+========================= */
 
 .navbar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    z-index: 1000;
-    opacity: 1;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    background-color: #2f2d6b;
-    padding: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 1000;
+  opacity: 1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background-color: #2f2d6b;
+  padding: 0;
 }
 
 .navbar-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 14px 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.navbar-brand {
-    color: white;
-    text-decoration: none;
-    font-size: 1.8rem;
-    font-style: italic;
-    font-weight: bold;
-    margin-left: 12px;
-}
-
-.icon-img {
-    width: 36px;
-    height: 36px;
-    object-fit: contain;
-    display: block;
-}
-
-.navbar-menu {
-    list-style: none;
-    display: flex;
-    gap: 24px;
-    margin: 0;
-    padding: 0;
-    align-items: center;
-}
-
-.navbar-menu a {
-    color: #C5E7DF;
-    text-decoration: none;
-    font-weight: 500;
-    font-style: italic;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .navbar-left {
-    display: flex;
-    align-items: center;
+  display: flex;
+  align-items: center;
 }
 
-.assignments-section{
-  padding: 1.25rem;
-  margin: 1.5rem auto;
-  max-width: 760px;
+.navbar-brand {
+  color: white;
+  text-decoration: none;
+  font-size: 1.8rem;
+  font-style: italic;
+  font-weight: bold;
+  margin-left: 12px;
 }
-.heading-container{
+
+.navbar-menu {
+  list-style: none;
+  display: flex;
+  gap: 24px;
+  margin: 0;
+  padding: 0;
+  align-items: center;
+}
+
+.navbar-menu a {
+  color: #C5E7DF;
+  text-decoration: none;
+  font-weight: 500;
+  font-style: italic;
+}
+
+.icon-img {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  display: block;
+}
+
+/* =========================
+   PAGE HEADERS
+========================= */
+
+.heading-container {
   max-width: 1100px;
   margin: 18px auto 0;
   padding: 0 18px;
@@ -130,237 +139,88 @@ body{
   gap: 12px;
 }
 
-.icon-img{
-  width: 42px;
-  height: 42px;
-  object-fit: contain;
-}
-
-.page-title{
+.page-title {
   font-size: 2rem;
   font-weight: 800;
-  color: #382619; /* Dark Coffee */
+  color: #382619;
   letter-spacing: 0.2px;
 }
 
-.assignments-header{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap: 12px;
-  margin-bottom: 1rem;
-}
+/* =========================
+   ASSIGNMENTS SECTION
+========================= */
 
-.add-assignment-btn{
-  background:#517664;
-  color:#fff;
-  border:none;
-  border-radius: var(--radius-sm);
-  padding:.55rem 1.1rem;
-  font-size:1rem;
-  font-weight:700;
-  cursor:pointer;
-  transition: transform .05s, background .2s;
-}
-
-.add-assignment-btn:hover{
-  background:#3f5f50;
-}
-.add-assignment-btn:active{ transform: translateY(1px); }
-
-.assignment-item{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap: 12px;
-  padding: .85rem 0;
-  border-bottom: 1px solid rgba(0,0,0,0.06);
-}
-
-.assignment-title{ font-weight: 800; color: var(--primary); }
-.assignment-due{ color: var(--accent); }
-
-/* ==================
-Palette
-#C5E7DF (Frozen Water)
-#2F3061 (Twilight Indigo)
-#517664 (Deep Teal)
-#382619 (Dark Coffee)
-======================*/
-
-:root{
-  --c-mint:#C5E7DF;
-  --c-indigo:#2F3061;
-  --c-teal:#517664;
-  --c-coffee:#382619;
-
-  /* UI mapping */
-  --bg:#f7fbfa;
-  --surface:#ffffff;
-  --text: var(--c-coffee);
-  --muted:#6b6b6b;
-  --border: rgba(47, 48, 97, 0.14);
-
-  --primary: var(--c-indigo);
-  --primary-hover:#242550;
-
-  --accent: var(--c-teal);
-  --accent-hover:#3f5e52;
-
-  --highlight: var(--c-mint);
-
-  --radius:14px;
-  --radius-sm:10px;
-  --shadow: 0 10px 30px rgba(56, 38, 25, 0.10);
-
-  --font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Helvetica Neue", sans-serif;
-}
-
-* { box-sizing: border-box; }
-body{
-  margin:0;
-  font-family: var(--font);
-  background: var(--bg);
-  color: var(--text);
-  padding-top: 120px;
-}
-
-.page{
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 24px 18px;
-}
-.card{
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-}
-
-
-.navbar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    z-index: 1000;
-    opacity: 1;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    background-color: #2f2d6b;
-    padding: 0;
-}
-
-.navbar-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 14px 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.navbar-brand {
-    color: white;
-    text-decoration: none;
-    font-size: 1.8rem;
-    font-style: italic;
-    font-weight: bold;
-    margin-left: 12px;
-}
-
-.icon-img {
-    width: 36px;
-    height: 36px;
-    object-fit: contain;
-    display: block;
-}
-
-.navbar-menu {
-    list-style: none;
-    display: flex;
-    gap: 24px;
-    margin: 0;
-    padding: 0;
-    align-items: center;
-}
-
-.navbar-menu a {
-    color: #C5E7DF;
-    text-decoration: none;
-    font-weight: 500;
-    font-style: italic;
-}
-
-.navbar-left {
-    display: flex;
-    align-items: center;
-}
-
-.assignments-section{
+.assignments-section {
   padding: 1.25rem;
   margin: 1.5rem auto;
   max-width: 760px;
 }
-.heading-container{
-  max-width: 1100px;
-  margin: 18px auto 0;
-  padding: 0 18px;
-  font-style: italic;
+
+.assignments-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-}
-
-.icon-img{
-  width: 42px;
-  height: 42px;
-  object-fit: contain;
-}
-
-.page-title{
-  font-size: 2rem;
-  font-weight: 800;
-  color: #382619; /* Dark Coffee */
-  letter-spacing: 0.2px;
-}
-
-.assignments-header{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
+  justify-content: space-between;
   gap: 12px;
   margin-bottom: 1rem;
 }
 
-.add-assignment-btn{
-  background:#517664;
-  color:#fff;
-  border:none;
+.add-assignment-btn {
+  background: #517664;
+  color: #fff;
+  border: none;
   border-radius: var(--radius-sm);
-  padding:.55rem 1.1rem;
-  font-size:1rem;
-  font-weight:700;
-  cursor:pointer;
-  transition: transform .05s, background .2s;
+  padding: 0.55rem 1.1rem;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.05s, background 0.2s;
 }
 
-.add-assignment-btn:hover{
-  background:#3f5f50;
+.add-assignment-btn:hover {
+  background: #3f5f50;
 }
-.add-assignment-btn:active{ transform: translateY(1px); }
 
-.assignment-item{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
+.add-assignment-btn:active {
+  transform: translateY(1px);
+}
+
+.assignment-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   gap: 12px;
-  padding: .85rem 0;
-  border-bottom: 1px solid rgba(0,0,0,0.06);
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 
-.assignment-title{ font-weight: 800; color: var(--primary); }
-.assignment-due{ color: var(--accent); }
+.assignment-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.assignment-title {
+  font-weight: 600;
+  color: #382619;
+}
+
+.assignment-due {
+  color: #517664;
+}
+
+.course-tag {
+  font-size: 0.85rem;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid;
+  white-space: nowrap;
+  display: inline-block;
+}
+
+/* =========================
+   FORM OVERLAY
+========================= */
 
 .form-overlay {
   position: fixed;
@@ -437,4 +297,54 @@ body{
 .submit-btn {
   background: var(--accent);
   color: white;
+}
+.account-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 80vh; /* centers vertically */
+}
+
+.account-card {
+    background: white;
+    padding: 40px;
+    border-radius: 20px;
+    width: 400px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.account-title {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.account-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 25px;
+}
+
+.account-form input {
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+}
+
+.account-form button {
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    background-color: #2F3061; /* your theme */
+    color: white;
+    cursor: pointer;
+}
+
+.logout-btn {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    background-color: #ccc;
+    cursor: pointer;
 }

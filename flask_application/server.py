@@ -154,6 +154,7 @@ def new_assignment():
         "user_id": current_user.id,
         "name": request.form.get("name"),
         "course": request.form.get("course"),
+        "class_color": request.form.get("class_color"),
         "due_date": request.form.get("due_date"),
         "priority_level": request.form.get("priority"),
         "course_id": "0000",
@@ -163,7 +164,6 @@ def new_assignment():
     }
 
     requests.post("http://127.0.0.1:8000/assignments/", json=data)
-
     return redirect(url_for("index"))
 
 # Calendar page route
