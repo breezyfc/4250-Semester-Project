@@ -116,3 +116,47 @@
   bottom: 0.15rem;
   line-height: 1;
 }
+.calendar-connect {
+  max-width: 760px;
+  margin: 24px auto 0;
+  padding: 0 18px;
+}
+
+.day-popup {
+  width: 600px;
+  max-width: 92%;
+}
+
+.popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+#popupAssignmentsContent {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.popup-assignment-card {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+
+.popup-assignment-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.popup-assignment-meta {
+  font-size: 0.95rem;
+  color: var(--accent);
+  margin-top: 4px;
+}
