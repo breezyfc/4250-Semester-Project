@@ -29,25 +29,35 @@
 </div>
 
 <div id="calendarConnectOverlay" class="form-overlay hidden">
-    <div class="form-container">
-        <h3>Connect your D2L Calendar</h3>
+  <div class="modal">
 
-        <form method="POST" action="/connect-calendar">
-            <label for="ics_url">D2L Calendar Feed</label>
-            <input
-                type="text"
-                id="ics_url"
-                name="ics_url"
-                placeholder="Paste your D2L calendar feed"
-                required
-            >
-
-            <div class="form-buttons">
-                <button type="button" id="closeCalendarConnectBtn" class="cancel-btn">Cancel</button>
-                <button type="submit" class="submit-btn">Connect Calendar</button>
-            </div>
-        </form>
+    <div class="modal-header">
+      <h3 class="modal-title">Connect your D2L Calendar</h3>
+      <button type="button" id="closeCalendarConnectBtn" class="modal-close">✕</button>
     </div>
+
+    <form method="POST" action="/connect-calendar">
+
+      <div class="field-group">
+        <label class="field-label" for="ics_url">D2L Calendar Feed</label>
+        <input
+          class="field-input"
+          type="text"
+          id="ics_url"
+          name="ics_url"
+          placeholder="Paste your D2L calendar feed"
+          required
+        >
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" id="cancelCalendarConnectBtn" class="cancel-btn">Cancel</button>
+        <button type="submit" class="submit-btn">Connect Calendar</button>
+      </div>
+
+    </form>
+
+  </div>
 </div>
 
 <div id="dayAssignmentsOverlay" class="form-overlay hidden">
