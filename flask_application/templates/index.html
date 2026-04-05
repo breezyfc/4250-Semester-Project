@@ -1,109 +1,275 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="heading-container">
-    <h3 class="page-title">Home</h3>
-</div>
+<div class="dashboard">
 
-<div class="assignments-section">
-    <div class="assignments-header">
-        <h2>Add New Assignment</h2>
-        <button type="button" class="add-assignment-btn" id="openFormBtn">+</button>
+  <!-- LEFT COLUMN: mini calendar + pomodoro -->
+  <aside class="dash-sidebar">
+
+    <div class="widget-card" id="miniCalWidget">
+      <div class="widget-label">Calendar</div>
+      <div class="mini-cal">
+        <div class="mini-cal-header">
+          <button class="mini-nav" id="miniPrev">&#8249;</button>
+          <span class="mini-cal-title" id="miniCalTitle"></span>
+          <button class="mini-nav" id="miniNext">&#8250;</button>
+        </div>
+        <div class="mini-cal-grid" id="miniCalGrid"></div>
+      </div>
+      <a href="/calendar" class="widget-link">Open full calendar →</a>
     </div>
 
-    <ul class="assignments-list">
-        {% for assignment in assignments %}
-        {% set tag_color = assignment.class_color or '#517664' %}
-        <li class="assignment-item">
-            
-            <div class="assignment-main">
-                <span class="assignment-title">{{ assignment.name }}</span>
-            {% if assignment.course and assignment.course != assignment.name %}
-                <span class="course-tag" data-color="{{ tag_color }}">
-                    {{ assignment.course }}
-                </span>
-            {% endif %}
-            </div>
+    <div class="widget-card" id="pomodoroWidget">
+      <div class="widget-label">Focus Timer</div>
+      <div class="pomodoro">
+        <div class="pomo-display" id="pomoDisplay">25:00</div>
+        <div class="pomo-mode-tabs">
+          <button class="pomo-tab active" onclick="setMode(this,25,'Focus')">Focus</button>
+          <button class="pomo-tab" onclick="setMode(this,5,'Short Break')">Short</button>
+          <button class="pomo-tab" onclick="setMode(this,15,'Long Break')">Long</button>
+        </div>
+        <div class="pomo-controls">
+          <button class="pomo-btn" id="pomoStartStop" onclick="togglePomo()">Start</button>
+          <button class="pomo-btn pomo-reset" onclick="resetPomo()">Reset</button>
+        </div>
+        <div class="pomo-sessions">
+          <span class="pomo-dot active"></span>
+          <span class="pomo-dot"></span>
+          <span class="pomo-dot"></span>
+          <span class="pomo-dot"></span>
+        </div>
+      </div>
+    </div>
 
-            <span class="assignment-due">Due: {{ assignment.due_date }}</span>
-        </li>
+  </aside>
 
-        {% else %}
-        <li>No assignments found.</li>
-        {% endfor %}
+  <!-- RIGHT COLUMN: assignment list -->
+  <main class="dash-main">
+
+    <div class="dash-main-header">
+      <h1 class="dash-title">Add new assignment</h1>
+      <button type="button" class="add-btn" id="openFormBtn">+</button>
+    </div>
+
+    <div class="assign-section-label">Upcoming assignments</div>
+
+    <ul class="assign-list">
+      {% for assignment in assignments %}
+      {% set tag_color = assignment.class_color or '#517664' %}
+      <li class="assign-row">
+        <div class="assign-row-left">
+          {% set p = assignment.priority_level | int if assignment.priority_level else 0 %}
+          <span class="assign-priority-dot pri-{{ p }}"></span>
+          <span class="assign-name">{{ assignment.name }}</span>
+          {% if assignment.course and assignment.course != assignment.name %}
+          <span class="assign-tag" data-color="{{ tag_color }}">{{ assignment.course }}</span>
+          {% endif %}
+        </div>
+        <div class="assign-row-right">
+          <span class="assign-due">{{ assignment.due_date }}</span>
+          <button class="assign-action-btn" title="Options">···</button>
+        </div>
+      </li>
+      {% else %}
+      <li class="assign-empty">No assignments yet — add one to get started.</li>
+      {% endfor %}
     </ul>
+
+  </main>
 </div>
 
-<!-- FORM OVERLAY -->
+<!-- ADD ASSIGNMENT MODAL -->
 <div id="formOverlay" class="form-overlay hidden">
-    <div class="form-container">
-        <h3>Add New Assignment</h3>
+  <div class="modal">
 
-        <form method="POST" action="/assignments/new">
-            <label for="name">Assignment Name</label>
-            <input type="text" id="name" name="name" placeholder="Assignment Name" required>
-
-            <label for="course">Class Name</label>
-            <input type="text" id="course" name="course" placeholder="Ex: CSCI 4250">
-
-            <label for="class_color">Class Color</label>
-            <input type="color" id="class_color" name="class_color" value="#517664">
-
-            <label for="due_date">Due Date</label>
-            <input type="date" id="due_date" name="due_date" required>
-
-            <label for="priority">Priority</label>
-            <select id="priority" name="priority" required>
-                <option value="">Select Priority</option>
-                <option value="1">1 (High)</option>
-                <option value="2">2 (Medium)</option>
-                <option value="3">3 (Low)</option>
-            </select>
-
-            <div class="form-buttons">
-                <button type="button" id="closeFormBtn" class="cancel-btn">Cancel</button>
-                <button type="submit" class="submit-btn">Submit</button>
-            </div>
-        </form>
+    <div class="modal-header">
+      <h3 class="modal-title">Add New Assignment</h3>
+      <button type="button" class="modal-close" id="closeFormBtn">✕</button>
     </div>
+
+    <form method="POST" action="/assignments/new" id="assignForm">
+
+      <!-- Assignment Name -->
+      <div class="field-group">
+        <label class="field-label" for="name">Assignment Name</label>
+        <input class="field-input" type="text" id="name" name="name" placeholder="e.g. Lab Report #4" required>
+      </div>
+
+      <!-- Class Name + Color (inline row) -->
+      <div class="field-row">
+        <div class="field-group" style="flex:1">
+          <label class="field-label" for="course">Class</label>
+          <input class="field-input" type="text" id="course" name="course" placeholder="e.g. CSCI 4250">
+        </div>
+        <div class="field-group color-group">
+          <label class="field-label" for="class_color">Color</label>
+          <div class="color-picker-wrap">
+            <input type="color" id="class_color" name="class_color" value="#517664">
+            <!-- Live tag preview -->
+            <span class="tag-preview" id="tagPreview">CSCI 4250</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Due Date -->
+      <div class="field-group">
+        <label class="field-label" for="due_date">Due Date</label>
+        <input class="field-input" type="date" id="due_date" name="due_date" required>
+      </div>
+
+      <!-- Priority (dot picker) -->
+      <div class="field-group">
+        <label class="field-label">Priority</label>
+        <div class="priority-picker">
+          <input type="hidden" id="priority" name="priority" value="">
+          <button type="button" class="pri-option" data-value="1">
+            <span class="pri-dot-btn pri-1"></span>
+            <span class="pri-option-label">High</span>
+          </button>
+          <button type="button" class="pri-option" data-value="2">
+            <span class="pri-dot-btn pri-2"></span>
+            <span class="pri-option-label">Medium</span>
+          </button>
+          <button type="button" class="pri-option" data-value="3">
+            <span class="pri-dot-btn pri-3"></span>
+            <span class="pri-option-label">Low</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" id="cancelBtn" class="cancel-btn">Cancel</button>
+        <button type="submit" class="submit-btn">Add Assignment</button>
+      </div>
+
+    </form>
+  </div>
 </div>
 
-<!-- SCRIPTS -->
 <script>
 document.addEventListener("DOMContentLoaded", function () {
 
-    // OPEN/CLOSE FORM
-    const openBtn = document.getElementById("openFormBtn");
-    const closeBtn = document.getElementById("closeFormBtn");
-    const overlay = document.getElementById("formOverlay");
+  // ── Overlay open/close ──
+  const overlay  = document.getElementById("formOverlay");
+  const openBtn  = document.getElementById("openFormBtn");
+  const closeBtn = document.getElementById("closeFormBtn");
+  const cancelBtn = document.getElementById("cancelBtn");
 
-    if (openBtn) {
-        openBtn.addEventListener("click", function () {
-            overlay.classList.remove("hidden");
-        });
-    }
+  openBtn.addEventListener("click",   () => overlay.classList.remove("hidden"));
+  closeBtn.addEventListener("click",  () => overlay.classList.add("hidden"));
+  cancelBtn.addEventListener("click", () => overlay.classList.add("hidden"));
+  overlay.addEventListener("click",   e => { if (e.target === overlay) overlay.classList.add("hidden"); });
 
-    if (closeBtn) {
-        closeBtn.addEventListener("click", function () {
-            overlay.classList.add("hidden");
-        });
-    }
+  // ── Tag preview (color + course name) ──
+  const colorInput  = document.getElementById("class_color");
+  const courseInput = document.getElementById("course");
+  const tagPreview  = document.getElementById("tagPreview");
 
-    if (overlay) {
-        overlay.addEventListener("click", function (e) {
-            if (e.target === overlay) {
-                overlay.classList.add("hidden");
-            }
-        });
-    }
+  function updateTagPreview() {
+    const color = colorInput.value;
+    const name  = courseInput.value.trim() || "Course Tag";
+    tagPreview.textContent = name;
+    tagPreview.style.borderColor     = color;
+    tagPreview.style.color           = color;
+    tagPreview.style.backgroundColor = color + "18";
+  }
 
-    // APPLY COLORS TO TAGS
-    document.querySelectorAll(".course-tag").forEach(tag => {
-        const color = tag.dataset.color || "#517664";
-        tag.style.borderColor = color;
-        tag.style.color = color;
-        tag.style.backgroundColor = color + "15";
+  colorInput.addEventListener("input",  updateTagPreview);
+  courseInput.addEventListener("input", updateTagPreview);
+  updateTagPreview(); // init
+
+  // ── Priority dot picker ──
+  const priInput   = document.getElementById("priority");
+  const priOptions = document.querySelectorAll(".pri-option");
+
+  priOptions.forEach(btn => {
+    btn.addEventListener("click", () => {
+      priOptions.forEach(b => b.classList.remove("selected"));
+      btn.classList.add("selected");
+      priInput.value = btn.dataset.value;
     });
+  });
+
+  // ── Course tag colors on list ──
+  document.querySelectorAll(".assign-tag").forEach(tag => {
+    const c = tag.dataset.color || "#517664";
+    tag.style.borderColor     = c;
+    tag.style.color           = c;
+    tag.style.backgroundColor = c + "18";
+  });
+
+  // ── Mini Calendar ──
+  const months = ["January","February","March","April","May","June",
+                  "July","August","September","October","November","December"];
+  const days   = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+  let cur   = new Date();
+  const tod = new Date();
+
+  function drawMini() {
+    const y = cur.getFullYear(), m = cur.getMonth();
+    document.getElementById("miniCalTitle").textContent = months[m].slice(0,3) + " " + y;
+    const grid = document.getElementById("miniCalGrid");
+    grid.innerHTML = "";
+    days.forEach(d => {
+      const lbl = document.createElement("div");
+      lbl.className = "mc-lbl"; lbl.textContent = d; grid.appendChild(lbl);
+    });
+    const fd  = new Date(y, m, 1).getDay();
+    const dim = new Date(y, m+1, 0).getDate();
+    for (let i = 0; i < fd; i++) {
+      const e = document.createElement("div"); e.className = "mc-day empty"; grid.appendChild(e);
+    }
+    for (let d = 1; d <= dim; d++) {
+      const cell = document.createElement("div");
+      cell.className = "mc-day"; cell.textContent = d;
+      if (d === tod.getDate() && m === tod.getMonth() && y === tod.getFullYear())
+        cell.classList.add("mc-today");
+      grid.appendChild(cell);
+    }
+  }
+  document.getElementById("miniPrev").addEventListener("click", () => { cur.setMonth(cur.getMonth()-1); drawMini(); });
+  document.getElementById("miniNext").addEventListener("click", () => { cur.setMonth(cur.getMonth()+1); drawMini(); });
+  drawMini();
+
+  // ── Pomodoro ──
+  window._pm = 25; window._ps = 1500; window._pr = false; window._pi = null;
+
+  window.setMode = function(btn, mins, label) {
+    document.querySelectorAll(".pomo-tab").forEach(t => t.classList.remove("active"));
+    btn.classList.add("active");
+    window._pm = mins;
+    resetPomo();
+  };
+
+  window.togglePomo = function() {
+    if (window._pr) {
+      clearInterval(window._pi); window._pr = false;
+      document.getElementById("pomoStartStop").textContent = "Resume";
+    } else {
+      window._pr = true;
+      document.getElementById("pomoStartStop").textContent = "Pause";
+      window._pi = setInterval(() => {
+        if (window._ps <= 0) {
+          clearInterval(window._pi); window._pr = false;
+          document.getElementById("pomoStartStop").textContent = "Start";
+          document.getElementById("pomoDisplay").textContent = "Done!";
+          return;
+        }
+        window._ps--;
+        const m = String(Math.floor(window._ps / 60)).padStart(2,"0");
+        const s = String(window._ps % 60).padStart(2,"0");
+        document.getElementById("pomoDisplay").textContent = m + ":" + s;
+      }, 1000);
+    }
+  };
+
+  window.resetPomo = function() {
+    clearInterval(window._pi); window._pr = false;
+    window._ps = window._pm * 60;
+    const m = String(window._pm).padStart(2,"0");
+    document.getElementById("pomoDisplay").textContent = m + ":00";
+    document.getElementById("pomoStartStop").textContent = "Start";
+  };
 
 });
 </script>
