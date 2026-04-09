@@ -33,9 +33,9 @@
   --radius-lg: 12px;
 
   /* Priority dot colors */
-  --pri-1: #e74c3c;   /* High   — red    */
-  --pri-2: #e67e22;   /* Medium — orange */
-  --pri-3: #2ecc71;   /* Low    — green  */
+  --pri-1: #22c55e;   /* Low    — green  */
+  --pri-2: #eab308;   /* Medium — yellow */
+  --pri-3: #ef4444;   /* High   — red   */
 
   --font-ui:      'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
   --font-display: 'Lora', Georgia, serif;
