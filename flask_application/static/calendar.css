@@ -109,8 +109,7 @@
 
 .event-dot {
   font-size: 10px;
-  position: absolute;
-  bottom: 2px;
+  position: static;
   line-height: 1;
 }
 

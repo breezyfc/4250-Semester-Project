@@ -21,11 +21,16 @@
 </div>
 
 <div class="calendar-actions">
-    <button type="button" class="add-assignment-btn" id="openCalendarConnectBtn">
-        Connect D2L Calendar
-    </button>
+  <button type="button" class="add-assignment-btn" id="openCalendarConnectBtn">
+    Connect D2L Calendar
+  </button>
 
-    <a href="/sync" class="sync-link">Sync Assignments</a>
+  <a href="/sync" class="sync-link">Sync Assignments</a>
+
+  <label style="margin-left: 20px; font-size: 15px;">
+    <input type="checkbox" id="hideAvailableToggle" style="vertical-align: middle; margin-right: 4px;">
+    Hide 'Available' Assignments
+  </label>
 </div>
 
 <div id="calendarConnectOverlay" class="form-overlay hidden">
@@ -51,13 +56,13 @@
 </div>
 
 <div id="dayAssignmentsOverlay" class="form-overlay hidden">
-  <div class="form-container day-popup">
+  <div class="form-container day-popup" style="max-height: 80vh; overflow-y: auto;">
     <div class="popup-header">
       <h3 id="popupDateTitle">Assignments for Selected Day</h3>
       <button type="button" id="closeDayPopup" class="cancel-btn">Close</button>
     </div>
 
-    <div id="popupAssignmentsContent">
+    <div id="popupAssignmentsContent" style="max-height: 60vh; overflow-y: auto;">
       <p>No assignments for this date.</p>
     </div>
   </div>
@@ -65,23 +70,60 @@
 
 <script type="application/json" id="calendar-assignments-data">{{ assignments | tojson }}</script>
 <script>
+document.addEventListener('DOMContentLoaded', function() {
 (function() {
-  var assignments = JSON.parse(document.getElementById('calendar-assignments-data').textContent);
-  var eventsByDate = {};
 
-  assignments.forEach(function(a) {
-    if (!a.due_date) return;
-    if (!eventsByDate[a.due_date]) eventsByDate[a.due_date] = [];
-    eventsByDate[a.due_date].push(a);
-  });
+  // Move these to top-level scope so all functions can access them
 
   var days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
   var months = ["January","February","March","April","May","June",
                 "July","August","September","October","November","December"];
 
   var currentDate = new Date();
-  var selectedDate = null;
   var today = new Date();
+  var selectedDate = null;
+
+  var allAssignments = JSON.parse(document.getElementById('calendar-assignments-data').textContent);
+  var assignments = [];
+  var eventsByDate = {};
+
+  // Filtering logic
+
+  function filterAssignments() {
+    var hideAvailable = document.getElementById('hideAvailableToggle').checked;
+    assignments = allAssignments.filter(function(a) {
+      if (!a.due_date || a.due_date.trim() === '') return false;
+      if (hideAvailable && a.name && a.name.toLowerCase().includes('available')) return false;
+      return true;
+    });
+
+    // Rebuild eventsByDate
+    eventsByDate = {};
+    assignments.forEach(function(a) {
+      var normalizedDate = a.due_date.trim();
+      if (!eventsByDate[normalizedDate]) eventsByDate[normalizedDate] = [];
+      eventsByDate[normalizedDate].push(a);
+    });
+    // Always draw the calendar grid, even if there are no assignments
+    drawCalendar();
+  }
+
+  // Persist toggle state in localStorage
+  var hideAvailableToggle = document.getElementById('hideAvailableToggle');
+  if (localStorage.getItem('hideAvailableAssignments') === 'true') {
+    hideAvailableToggle.checked = true;
+  }
+  hideAvailableToggle.addEventListener('change', function() {
+    localStorage.setItem('hideAvailableAssignments', hideAvailableToggle.checked);
+    filterAssignments();
+  });
+
+  // Initial filter
+  filterAssignments();
+
+
+
+
 
   var dayOverlay = document.getElementById('dayAssignmentsOverlay');
   var closeDayPopup = document.getElementById('closeDayPopup');
@@ -91,15 +133,29 @@
   function formatDayKey(year, month, day) {
     var y = year.toString();
     var m = (month + 1).toString().padStart(2, '0');
-    var d = day.toString().padStart(2, '0');
-    return y + '-' + m + '-' + d;
+    var dayStr = day.toString().padStart(2, '0');
+    return y + '-' + m + '-' + dayStr;
   }
+
 
   function renderAssignmentList(dateKey) {
     popupAssignmentsContent.innerHTML = '';
 
     var items = eventsByDate[dateKey] || [];
-    popupDateTitle.textContent = 'Assignments for ' + dateKey;
+
+    // Show a human-readable date in the popup
+    var parts = dateKey.split('-');
+    var displayDate = '';
+    if (parts.length === 3) {
+      displayDate = months[parseInt(parts[1], 10) - 1] + ' ' + parseInt(parts[2], 10) + ', ' + parts[0];
+    } else {
+      displayDate = dateKey;
+    }
+    popupDateTitle.textContent = 'Assignments for ' + displayDate;
+
+    // Debug: show all keys and the selected key
+    console.log('Looking for assignments on:', dateKey, 'Found:', items.length, 'items');
+    console.log('All assignment date keys:', Object.keys(eventsByDate));
 
     if (items.length === 0) {
       popupAssignmentsContent.innerHTML = '<p>No assignments for this date.</p>';
@@ -226,13 +282,6 @@
           }
         });
 
-        var uniqueCourses = Object.keys(courseColors).length;
-        var dotSpacing = 8; // 8px between dots
-        var dotWidth = 10; // approximate width of each dot
-        var totalDotsWidth = (uniqueCourses * dotWidth) + ((uniqueCourses - 1) * dotSpacing);
-        var dayCellWidth = 40; // approximate width of day cell
-        var startLeft = Math.max(2, (dayCellWidth - totalDotsWidth) / 2); // Center dots, minimum 2px from left
-
         // Add assignment count indicator if more than 3 assignments
         if (totalAssignments > 3) {
           var countIndicator = document.createElement('span');
@@ -242,30 +291,45 @@
           dayBox.appendChild(countIndicator);
         }
 
-        // Create a dot for each unique course
-        Object.values(courseColors).forEach(function(color, idx) {
+        // Create a flex container for dots
+        var dotContainer = document.createElement('div');
+        dotContainer.style.display = 'flex';
+        dotContainer.style.justifyContent = 'center';
+        dotContainer.style.alignItems = 'center';
+        dotContainer.style.gap = '8px';
+        dotContainer.style.marginTop = '2px';
+        dotContainer.style.position = 'relative';
+
+        Object.values(courseColors).forEach(function(color) {
           var dot = document.createElement('span');
           dot.className = 'event-dot';
           dot.textContent = '●';
           dot.style.color = color;
-          dot.style.position = 'absolute';
-          dot.style.bottom = '2px';
-          dot.style.left = startLeft + (idx * 8) + 'px';
+          dot.style.position = 'static';
           dot.style.fontSize = '10px';
-          dayBox.appendChild(dot);
+          dotContainer.appendChild(dot);
         });
+        dayBox.appendChild(dotContainer);
       }
 
-      dayBox.addEventListener('click', function() {
-        var previous = document.querySelector('.cal-day.selected');
-        if (previous) previous.classList.remove('selected');
 
-        this.classList.add('selected');
-        selectedDate = this.textContent;
+      // Use an IIFE to capture the current value of d for each day
+      (function(dayNum) {
+        dayBox.addEventListener('click', function() {
+          var previous = document.querySelector('.cal-day.selected');
+          if (previous) previous.classList.remove('selected');
 
-        var selectedKey = formatDayKey(year, month, parseInt(this.textContent, 10));
-        renderAssignmentList(selectedKey);
-      });
+          this.classList.add('selected');
+          selectedDate = dayNum;
+
+          // Always use the current visible year and month
+          var visibleYear = currentDate.getFullYear();
+          var visibleMonth = currentDate.getMonth();
+          var selectedKey = formatDayKey(visibleYear, visibleMonth, dayNum);
+          console.log('Clicked day:', dayNum, 'Generated key:', selectedKey);
+          renderAssignmentList(selectedKey);
+        });
+      })(d);
 
       grid.appendChild(dayBox);
     }
@@ -293,5 +357,6 @@
 
   drawCalendar();
 })();
+});
 </script>
 {% endblock %}

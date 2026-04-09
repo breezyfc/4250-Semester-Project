@@ -232,30 +232,72 @@ def new_assignment():
 @app.route("/calendar/")
 @login_required  # Require user to be logged in
 def about():
+    from datetime import datetime
+    import re
+    
     # If user has connected a calendar, sync latest assignments from it
     if current_user.ics_url:
         sync_assignments(current_user)
 
     # Query all assignments for current user, sorted by due date
     raw_assignments = Assignment.query.filter_by(user_id=current_user.id).order_by(Assignment.due_date).all()
-    # Convert ORM objects to dictionaries for template rendering
-    assignments = [
-        {
+
+    # Check for filter in query string (for server-side rendering, e.g. for non-JS clients)
+    hide_available = (request.args.get('hide_available') == '1')
+
+    def normalize_date(due_date_str):
+        """Normalize date to ISO format YYYY-MM-DD"""
+        if not due_date_str:
+            return None
+        due_date = due_date_str.strip()
+        try:
+            patterns = [
+                ('%Y-%m-%d', 'YYYY-MM-DD'),
+                ('%m/%d/%Y', 'MM/DD/YYYY'),
+                ('%m-%d-%Y', 'MM-DD-YYYY'),
+                ('%Y/%m/%d', 'YYYY/MM/DD'),
+                ('%d/%m/%Y', 'DD/MM/YYYY'),
+                ('%d-%m-%Y', 'DD-MM-YYYY'),
+            ]
+            for fmt, name in patterns:
+                try:
+                    dt = datetime.strptime(due_date, fmt)
+                    return dt.strftime('%Y-%m-%d')
+                except ValueError:
+                    continue
+            match = re.search(r'(\d{1,2})[/-](\d{1,2})[/-](\d{4})', due_date)
+            if match:
+                month, day, year = match.groups()
+                dt = datetime(int(year), int(month), int(day))
+                return dt.strftime('%Y-%m-%d')
+            if re.match(r'^\d{4}-\d{2}-\d{2}$', due_date):
+                return due_date
+            print(f"Warning: Could not parse due_date '{due_date}' with any known format")
+            return None
+        except Exception as e:
+            print(f"Error parsing due_date '{due_date}': {e}")
+            return None
+
+    assignments = []
+    for a in raw_assignments:
+        if hide_available and a.name and 'available' in a.name.lower():
+            continue
+        normalized_date = normalize_date(a.due_date)
+        if not normalized_date:
+            continue
+        assignments.append({
             'id': a.id,
             'name': a.name,
             'course': a.course,
             'course_id': a.course_id,
-            'due_date': a.due_date,
+            'due_date': normalized_date,
             'due_time': a.due_time,
             'assignment_type': a.assignment_type,
             'priority_level': a.priority_level,
             'points': a.points,
             'ics_uid': a.ics_uid,
             'color': a.color or '#517664',
-        }
-        for a in raw_assignments
-    ]
-    # Render calendar template with assignments
+        })
     return render_template("calendar.html", assignments=assignments)
 
 
@@ -292,9 +334,19 @@ def sync():
 @login_required  # Require user to be logged in
 def assignment():
     # Query all assignments for current user, sorted by due date
-    assignments = Assignment.query.filter_by(
+    raw_assignments = Assignment.query.filter_by(
         user_id=current_user.id
     ).order_by(Assignment.due_date).all()
+
+    # Check for filter in query string (for server-side rendering, e.g. for non-JS clients)
+    hide_available = (request.args.get('hide_available') == '1')
+
+    assignments = []
+    for a in raw_assignments:
+        if hide_available and a.name and 'available' in a.name.lower():
+            continue
+        assignments.append(a)
+
     # Render template with assignments
     return render_template("assignments.html", assignments=assignments)
 

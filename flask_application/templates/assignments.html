@@ -8,11 +8,17 @@
     <h3 class="page-title">Assignment Page</h3>
 </div>
 
+
 <div class="assignments-section">
 
-    <a href="/sync">Sync D2L Assignments</a>
+        <a href="/sync">Sync D2L Assignments</a>
 
-    <div class="assignment-list">
+        <label style="margin-left: 20px; font-size: 15px;">
+            <input type="checkbox" id="hideAvailableToggle" style="vertical-align: middle; margin-right: 4px;">
+            Hide 'Available' Assignments
+        </label>
+
+        <div class="assignment-list" id="assignmentList">
 
         {% if assignments %}
 
@@ -103,6 +109,7 @@
 
                 </div>
 
+
             {% endfor %}
 
         {% else %}
@@ -111,7 +118,31 @@
 
         {% endif %}
 
-    </div>
+
+        </div>
+
+<script>
+// Assignment filter for 'Available' toggle
+const allAssignments = Array.from(document.querySelectorAll('.assignment-card'));
+const hideAvailableToggle = document.getElementById('hideAvailableToggle');
+if (localStorage.getItem('hideAvailableAssignments') === 'true') {
+    hideAvailableToggle.checked = true;
+}
+function filterAssignments() {
+    const hideAvailable = hideAvailableToggle.checked;
+    allAssignments.forEach(card => {
+        const title = card.querySelector('h3')?.textContent || '';
+        if (hideAvailable && title.toLowerCase().includes('available')) {
+            card.style.display = 'none';
+        } else {
+            card.style.display = '';
+        }
+    });
+    localStorage.setItem('hideAvailableAssignments', hideAvailableToggle.checked);
+}
+hideAvailableToggle.addEventListener('change', filterAssignments);
+window.addEventListener('DOMContentLoaded', filterAssignments);
+</script>
 
 </div>
 
