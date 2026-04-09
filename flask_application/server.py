@@ -10,10 +10,8 @@ if project_root not in sys.path:
 
 
 from flask import Flask, render_template, request, flash, redirect, url_for
-from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from app.models import db, User, Assignment
-from flask_application.decorators import admin_required
 import requests
 from sqlalchemy import text
 from sync import sync_assignments
@@ -79,39 +77,34 @@ def account():
 
     return render_template("account.html")
 
-
-
-
 # 3 routes -- login, logout, register
 @app.route("/register", methods=["GET", "POST"])
 def register():
-    if request.method=="POST":
+    if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
-        is_admin = request.form.get('is_admin') == 'on' # on means it is checked
+        is_admin = request.form.get('is_admin') == 'on'  # on means it is checked
 
         print(username)
 
         # check if they exist
         if User.query.filter_by(username=username).first():
             flash("Username already exists.", "error")
-            return redirect(url_for('register'))
-        
-        new_user = User(username=username, is_admin = is_admin)
+            return redirect(url_for('register'))        
+        new_user = User(username=username, is_admin=is_admin)
         new_user.set_password(password)
         db.session.add(new_user)
         db.session.commit()
 
         flash("Account created successfully!", "success")
         return redirect(url_for('login'))
-    
     return render_template('register.html')
 
 @app.route('/login', methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        username=request.form['username']
-        password=request.form['password']
+        username = request.form['username']
+        password = request.form['password']
 
         # does this user exist in the db?
         user = User.query.filter_by(username=username).first()
@@ -189,7 +182,7 @@ def about():
     return render_template("calendar.html", assignments=assignments)
 
 
-#connect calendar route
+# connect calendar route
 @app.route("/connect-calendar/", methods=["GET", "POST"])
 @login_required
 def connect_calendar():
@@ -199,7 +192,7 @@ def connect_calendar():
     flash("Calendar connected successfully!", "success")
     return redirect(url_for("about"))
 
-#sync stuff
+# sync stuff
 @app.route("/sync/")
 @login_required
 def sync():
@@ -216,6 +209,7 @@ def assignment():
         user_id=current_user.id
     ).order_by(Assignment.due_date).all()
     return render_template("assignments.html", assignments=assignments)
+
 
 if __name__ == '__main__':
     app.run(debug=True)
