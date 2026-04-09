@@ -55,15 +55,32 @@
 
     <ul class="assign-list">
       {% for assignment in assignments %}
-      {% set tag_color = assignment.class_color or '#517664' %}
+      {% set tag_color = assignment.color or '#517664' %}
       <li class="assign-row">
         <div class="assign-row-left">
           {% set p = assignment.priority_level | int if assignment.priority_level else 0 %}
           <span class="assign-priority-dot pri-{{ p }}"></span>
-          <span class="assign-name">{{ assignment.name }}</span>
-          {% if assignment.course and assignment.course != assignment.name %}
-          <span class="assign-tag" data-color="{{ tag_color }}">{{ assignment.course }}</span>
-          {% endif %}
+          <div style="display: flex; align-items: flex-start; gap: 10px; flex: 1; min-width: 0;">
+            <div style="min-width: 0; flex: 1;">
+              <div style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ assignment.name }}</div>
+              <div style="font-size: 12px; color: #666; margin-top: 2px; display: flex; gap: 6px; flex-wrap: wrap;">
+                {% if assignment.assignment_type %}
+                  <span style="background: #e3f2fd; color: #1565c0; padding: 2px 6px; border-radius: 3px; font-size: 11px; white-space: nowrap;">{{ assignment.assignment_type }}</span>
+                {% endif %}
+                {% if assignment.priority_level %}
+                  {% set priority_info = {
+                    1: {'text': 'Low', 'color': '#22c55e'},
+                    2: {'text': 'Medium', 'color': '#eab308'},
+                    3: {'text': 'High', 'color': '#ef4444'}
+                  }.get(assignment.priority_level | int, {'text': 'Unknown', 'color': '#6b7280'}) %}
+                  <span style="background: {{ priority_info.color }}; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; white-space: nowrap; font-weight: 500;">{{ priority_info.text }}</span>
+                {% endif %}
+              </div>
+            </div>
+            {% if assignment.course and assignment.course != assignment.name %}
+              <span class="assign-tag" data-color="{{ tag_color }}" style="white-space: nowrap; flex-shrink: 0;">{{ assignment.course }}</span>
+            {% endif %}
+          </div>
         </div>
         <div class="assign-row-right">
           <span class="assign-due">{{ assignment.due_date }}</span>

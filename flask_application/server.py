@@ -17,7 +17,7 @@ from flask_login import LoginManager, login_user, login_required, logout_user, c
 from app.models import db, User, Assignment
 import requests
 from sqlalchemy import text
-from sync import sync_assignments
+from flask_application.sync import sync_assignments
 
 # Initialize Flask application
 app = Flask(__name__)
@@ -209,13 +209,13 @@ def new_assignment():
         "user_id": current_user.id,  # Set current user as owner
         "name": request.form.get("name"),  # Assignment name
         "course": request.form.get("course"),  # Course name
-        "class_color": request.form.get("class_color"),  # UI color (not stored in DB)
         "due_date": request.form.get("due_date"),  # Due date
         "priority_level": request.form.get("priority"),  # Priority level
         "course_id": "0000",  # Default course code
         "due_time": None,  # Not provided in this form
         "assignment_type": None,  # Not provided in this form
-        "points": None  # Not provided in this form
+        "points": None,  # Not provided in this form
+        "color": request.form.get("class_color") or "#517664"  # Course color from form
     }
 
     # Send POST request to FastAPI backend to create assignment
@@ -250,6 +250,8 @@ def about():
             'assignment_type': a.assignment_type,
             'priority_level': a.priority_level,
             'points': a.points,
+            'ics_uid': a.ics_uid,
+            'color': a.color or '#517664',
         }
         for a in raw_assignments
     ]

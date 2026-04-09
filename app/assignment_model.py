@@ -45,3 +45,6 @@ class Assignment(Base):
 
     # Point value for this assignment
     points = Column(Float)
+
+    # Course color for calendar/UI display (hex color code like #517664)
+    color = Column(String(7), nullable=True, default="#517664")

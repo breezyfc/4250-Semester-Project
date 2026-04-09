@@ -108,6 +108,217 @@ def parse_course_id(title):
     return "0000"
 
 
+def generate_course_color(course_code_or_name):
+    """Generate a consistent hex color for a course based on its code/name.
+
+    Same input always produces same color, so each course maintains
+    consistent color across assignments.
+
+    Args:
+        course_code_or_name: Course code (e.g., "4250") or course name
+
+    Returns:
+        Hex color string like "#517664"
+    """
+    if not course_code_or_name:
+        return "#517664"  # Default color
+
+    # Create a consistent hash from the course identifier
+    hash_val = sum(ord(c) for c in str(course_code_or_name))
+
+    # Predefined palette of nice colors for courses
+    colors = [
+        "#517664",  # Sage green (default)
+        "#FF6B6B",  # Coral red
+        "#4ECDC4",  # Turquoise
+        "#45B7D1",  # Sky blue
+        "#FFA07A",  # Light salmon
+        "#98D8C8",  # Mint
+        "#F7DC6F",  # Golden
+        "#BB8FCE",  # Purple
+        "#85C1E2",  # Periwinkle
+        "#F8B88B",  # Peach
+    ]
+
+    return colors[hash_val % len(colors)]
+
+
+def extract_course_code_from_location(location):
+    """
+    Extracts the 4-digit course code from D2L LOCATION field.
+
+    D2L format: "CSCI-4250-800 - Software Engineer I"
+    Extracts: "4250"
+
+    Args:
+        location: LOCATION field value from ICS event
+
+    Returns:
+        4-digit course code as string, or "0000" if not found
+    """
+    if not location:
+        return "0000"
+
+    # D2L format: CoursePrefix-4digitCode-Section
+    # Example: "CSCI-4250-800 - Software Engineer I"
+    # Extract the first sequence of digits after a dash
+    match = re.search(r"-(\d{4})-", location)
+    if match:
+        return match.group(1)
+
+    # Fallback: just look for any 4-digit number
+    match = re.search(r"\b(\d{4})\b", location)
+    if match:
+        return match.group(1)
+
+    return "0000"
+
+
+def parse_course(title):
+    """
+    Extracts the course label from an assignment title.
+
+    Examples:
+        "CS 3050 - Assignment 1" -> "CS 3050"
+        "CSCI 4250: Project 2" -> "CSCI 4250"
+        "Software Engineering - Final Exam" -> "Software Engineering"
+    """
+    # Look for a leading course or class segment before a separator.
+    for sep in (" - ", ":", "|"):
+        if sep in title:
+            candidate = title.split(sep, 1)[0].strip()
+            if candidate and candidate != title:
+                return candidate
+
+    # Fallback: if title contains a course code, return the code with any prefix.
+    match = re.search(r"\b[A-Za-z]{2,}\s*\d{4}\b", title)
+    if match:
+        return match.group(0).strip()
+
+    # If no course-like segment can be extracted, return None so UI can omit it.
+    return None
+
+
+def unfold_ics_lines(raw_lines):
+    """Unfold ICS lines that continue on the next line with leading whitespace."""
+    unfolded = []
+    for line in raw_lines:
+        if line.startswith((" ", "\t")) and unfolded:
+            unfolded[-1] += line.lstrip()
+        else:
+            unfolded.append(line)
+    return unfolded
+
+
+def extract_assignment_type(lines, title):
+    """Extract assignment type from ICS DESCRIPTION field.
+
+    D2L typically includes activity type at the start of DESCRIPTION:
+    - "Dropbox:" = submitted work
+    - "Modules:" = learning module
+    - "Quizzes:" = quiz/test
+    - "Assignments:" = assignment
+    - etc.
+    """
+    description_line = next(
+        (line for line in lines if line.split(":", 1)[0].split(";", 1)[0] == "DESCRIPTION"),
+        None,
+    )
+    if not description_line:
+        return None
+
+    if ":" not in description_line:
+        return None
+    _, desc_value = description_line.split(":", 1)
+    desc_value = desc_value.strip()
+
+    # Map common D2L type prefixes to readable names
+    type_map = {
+        "Dropbox": "Submission",
+        "Modules": "Module",
+        "Quizzes": "Quiz",
+        "Assignments": "Assignment",
+        "Assessments": "Assessment",
+        "Discussions": "Discussion",
+        "Surveys": "Survey",
+    }
+
+    for prefix, type_name in type_map.items():
+        if desc_value.startswith(prefix + ":"):
+            return type_name
+
+    return None
+
+
+def get_default_priority_for_type(assignment_type):
+    """Get default priority level based on assignment type.
+
+    Priority mapping:
+    - High (3): Assignments, Assessments, Submissions
+    - Medium (2): Quizzes, Surveys
+    - Low (1): Modules, Discussions
+    - None: Unknown types
+    """
+    if not assignment_type:
+        return None
+
+    high_priority = ["Assignment", "Assessment", "Submission"]
+    medium_priority = ["Quiz", "Survey"]
+    low_priority = ["Module", "Discussion"]
+
+    if assignment_type in high_priority:
+        return 3  # High
+    elif assignment_type in medium_priority:
+        return 2  # Medium
+    elif assignment_type in low_priority:
+        return 1  # Low
+
+    return None  # Unknown type
+
+
+def extract_course_from_event(lines, title):
+    """Extract course info from ICS event fields.
+
+    D2L feeds store course as: LOCATION:CourseCode-CourseSection - CourseName
+    Example: LOCATION:CSCI-4250-800 - Software Engineer I
+    """
+    # Try LOCATION first (D2L standard format)
+    location_line = next(
+        (line for line in lines if line.split(":", 1)[0].split(";", 1)[0] == "LOCATION"),
+        None,
+    )
+    if location_line:
+        if ":" not in location_line:
+            return None
+        _, value = location_line.split(":", 1)
+        value = value.strip().replace("\\n", " ")
+
+        # Parse D2L format: "CSCI-4250-800 - Software Engineer I"
+        if " - " in value:
+            parts = value.split(" - ", 1)
+            if len(parts) == 2:
+                # Return the course name part (after the dash)
+                return parts[1].strip()
+
+    # Fallback to other fields if LOCATION didn't work
+    for prefix in ("DESCRIPTION:", "CATEGORIES:", "COMMENT:"):
+        line = next((line for line in lines if line.startswith(prefix)), None)
+        if not line:
+            continue
+        if ":" not in line:
+            continue
+        _, value = line.split(":", 1)
+        value = value.strip().replace("\\n", " ").strip()
+        if not value or value == title:
+            continue
+        # Look for explicit course pattern
+        match = re.search(r"\b(?:Course|Class|Subject)\s*:\s*(.+)", value, re.I)
+        if match:
+            return match.group(1).strip()
+
+    return None
+
+
 def sync_assignments(user):
     """
     Fetches assignments from user's ICS calendar feed and syncs to database.
@@ -148,8 +359,9 @@ def sync_assignments(user):
 
     # Process each event from calendar
     for event_text in events:
-        # Split event into individual lines for parsing
-        lines = event_text.splitlines()
+        # Split event into individual lines for parsing and unfold any folded ICS lines
+        raw_lines = event_text.splitlines()
+        lines = unfold_ics_lines(raw_lines)
 
         # Extract UID (unique identifier for this event)
         uid_line = next((line for line in lines if line.startswith("UID:")), None)
@@ -175,10 +387,25 @@ def sync_assignments(user):
             # Skip events with unparseable dates
             continue
 
-        # Use full title as course name
-        course = title
-        # Extract course code from title
-        course_id = parse_course_id(title)
+        course = extract_course_from_event(lines, title)
+        if not course:
+            course = parse_course(title)
+        if course == title:
+            course = None
+
+        # Extract course code - try LOCATION field first (D2L format), then fallback to title
+        location_line = next(
+            (line for line in lines if line.split(":", 1)[0].split(";", 1)[0] == "LOCATION"),
+            None,
+        )
+        if location_line and ":" in location_line:
+            _, location_value = location_line.split(":", 1)
+            course_id = extract_course_code_from_location(location_value.strip())
+        else:
+            course_id = parse_course_id(title)
+
+        # Extract assignment type from DESCRIPTION field
+        assignment_type = extract_assignment_type(lines, title)
 
         # Check if assignment already exists in database
         existing = None
@@ -201,10 +428,17 @@ def sync_assignments(user):
             # Update course info
             existing.course = course
             existing.course_id = course_id
+            existing.assignment_type = assignment_type
+            # Generate color for this course
+            existing.color = generate_course_color(course_id)
+            # Set default priority based on assignment type if not already set
+            if existing.priority_level is None:
+                existing.priority_level = get_default_priority_for_type(assignment_type)
             # Store UID for robust future matching
             existing.ics_uid = uid or existing.ics_uid
         else:
             # Create new assignment from calendar event
+            default_priority = get_default_priority_for_type(assignment_type)
             assignment = Assignment(
                 name=title,
                 due_date=due_date,
@@ -213,9 +447,10 @@ def sync_assignments(user):
                 course=course,
                 course_id=course_id,
                 due_time=due_time,
-                assignment_type=None,  # Not provided by calendar
-                priority_level=None,  # Not provided by calendar
-                points=None  # Not provided by calendar
+                assignment_type=assignment_type,
+                priority_level=default_priority,  # Set based on assignment type
+                points=None,  # Not provided by calendar
+                color=generate_course_color(course_id)  # Assign consistent color per course
             )
             # Add new assignment to database session
             db.session.add(assignment)

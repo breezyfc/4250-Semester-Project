@@ -95,3 +95,6 @@ class Assignment(db.Model):
 
     # Point value for this assignment (for grading calculations)
     points = db.Column(db.Float)
+
+    # Course color for calendar/UI display (hex color code like #517664)
+    color = db.Column(db.String(7), nullable=True, default="#517664")

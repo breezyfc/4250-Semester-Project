@@ -108,12 +108,26 @@
 }
 
 .event-dot {
-  color: var(--primary);
-  font-size: 1.2rem;
+  font-size: 10px;
   position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: 0.15rem;
+  bottom: 2px;
+  line-height: 1;
+}
+
+.assignment-count {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: var(--accent);
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
 }
 .calendar-connect {

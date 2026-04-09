@@ -30,6 +30,8 @@ class AssignmentBase(BaseModel):
     priority_level: int | None = None
     # Point value for grading (optional)
     points: float | None = None
+    # Course color for calendar display (hex color code, optional)
+    color: str | None = None
 
 
 # Request schema for POST /assignments/ (creating new assignment)
@@ -49,6 +51,7 @@ class AssignmentCreate(BaseModel):
     assignment_type: str | None = None  # Type of assignment
     priority_level: int | None = None  # Priority level
     points: float | None = None  # Point value
+    color: str | None = None  # Course color (hex code)
 
 
 # Request schema for PUT /assignments/{id} (updating existing assignment)
@@ -72,6 +75,8 @@ class AssignmentUpdate(BaseModel):
     priority_level: int | None = None
     # Point value (optional to update)
     points: float | None = None
+    # Course color (optional to update)
+    color: str | None = None
 
 
 # Response schema for returning assignments from API endpoints

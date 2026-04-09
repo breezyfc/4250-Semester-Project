@@ -18,12 +18,89 @@
 
             {% for assignment in assignments %}
 
-                <div class="assignment-card">
-                    <h3>{{ assignment.name }}</h3>
-                    <p><strong>Course:</strong> {{ assignment.course or 'None' }} ({{ assignment.course_id }})</p>
-                    <p><strong>Due date:</strong> {{ assignment.due_date }} <strong>Time:</strong> {{ assignment.due_time or 'N/A' }}</p>
-                    <p><strong>Type:</strong> {{ assignment.assignment_type or 'N/A' }} | <strong>Priority:</strong> {{ assignment.priority_level or 'N/A' }}</p>
-                    <p><strong>Points:</strong> {{ assignment.points or 'N/A' }}</p>
+                <div class="assignment-card" style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
+                    <!-- Header with title and type -->
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                        <div style="flex: 1;">
+                            <h3 style="margin: 0; font-size: 18px; color: #1f2937;">{{ assignment.name }}</h3>
+                            {% if assignment.assignment_type %}
+                                <span style="background: #dbeafe; color: #1e40af; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 500; display: inline-block; margin-top: 6px;">{{ assignment.assignment_type }}</span>
+                            {% endif %}
+                        </div>
+                        <div style="text-align: right; font-size: 12px; color: #6b7280;">
+                            ID: {{ assignment.id }}
+                        </div>
+                    </div>
+
+                    <hr style="margin: 12px 0; border: none; border-top: 1px solid #e5e7eb;">
+
+                    <!-- Course info -->
+                    {% if assignment.course and assignment.course != assignment.name %}
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 12px;">
+                            <div>
+                                <p style="margin: 0; font-size: 12px; color: #6b7280; font-weight: 600;">COURSE</p>
+                                <p style="margin: 4px 0 0 0; font-size: 14px; color: #1f2937;">{{ assignment.course }}</p>
+                            </div>
+                            <div>
+                                <p style="margin: 0; font-size: 12px; color: #6b7280; font-weight: 600;">COURSE CODE</p>
+                                <p style="margin: 4px 0 0 0; font-size: 14px; color: #1f2937;">{{ assignment.course_id }}</p>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div>
+                            <p style="margin: 0; font-size: 12px; color: #6b7280; font-weight: 600;">COURSE CODE</p>
+                            <p style="margin: 4px 0 0 0; font-size: 14px; color: #1f2937;">{{ assignment.course_id }}</p>
+                        </div>
+                    {% endif %}
+
+                    <hr style="margin: 12px 0; border: none; border-top: 1px solid #e5e7eb;">
+
+                    <!-- Due date/time, priority, points -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                        <div>
+                            <p style="margin: 0; font-size: 12px; color: #6b7280; font-weight: 600;">DUE DATE</p>
+                            <p style="margin: 4px 0 0 0; font-size: 14px; color: #1f2937; font-family: monospace;">{{ assignment.due_date }}</p>
+                        </div>
+                        {% if assignment.due_time %}
+                            <div>
+                                <p style="margin: 0; font-size: 12px; color: #6b7280; font-weight: 600;">DUE TIME</p>
+                                <p style="margin: 4px 0 0 0; font-size: 14px; color: #1f2937; font-family: monospace;">{{ assignment.due_time }}</p>
+                            </div>
+                        {% endif %}
+                        <div>
+                            <p style="margin: 0; font-size: 12px; color: #6b7280; font-weight: 600;">PRIORITY</p>
+                            <p style="margin: 4px 0 0 0; font-size: 14px; color: #1f2937;">
+                                {% if assignment.priority_level %}
+                                    {% set priority_info = {
+                                        1: {'text': 'Low', 'color': '#22c55e'},
+                                        2: {'text': 'Medium', 'color': '#eab308'},
+                                        3: {'text': 'High', 'color': '#ef4444'}
+                                    }.get(assignment.priority_level | int, {'text': 'Unknown', 'color': '#6b7280'}) %}
+                                    <span style="background: {{ priority_info.color }}; color: white; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: 500;">{{ priority_info.text }}</span>
+                                {% else %}
+                                    Not set
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+
+                    <hr style="margin: 12px 0; border: none; border-top: 1px solid #e5e7eb;">
+
+                    <!-- Points -->
+                    {% if assignment.points %}
+                        <div style="margin-bottom: 12px;">
+                            <p style="margin: 0; font-size: 12px; color: #6b7280; font-weight: 600;">POINTS</p>
+                            <p style="margin: 4px 0 0 0; font-size: 14px; color: #1f2937;">{{ assignment.points }} pts</p>
+                        </div>
+                    {% endif %}
+
+                    <!-- System info -->
+                    {% if assignment.ics_uid %}
+                        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
+                            <p style="margin: 0; font-size: 11px; color: #9ca3af; word-break: break-all;">📅 Synced: {{ assignment.ics_uid }}</p>
+                        </div>
+                    {% endif %}
+
                 </div>
 
             {% endfor %}
