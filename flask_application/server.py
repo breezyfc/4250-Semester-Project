@@ -202,8 +202,13 @@ def logout():
 @app.route('/')
 @login_required  # Require user to be logged in
 def index():
-    # Query all assignments for current user, sorted by due date
-    assignments = Assignment.query.filter_by(user_id=current_user.id).order_by(Assignment.due_date).all()
+    from datetime import date
+    # Query all assignments for current user, sorted by due date, only today or future
+    today = date.today()
+    assignments = Assignment.query.filter(
+        Assignment.user_id == current_user.id,
+        Assignment.due_date >= today
+    ).order_by(Assignment.due_date).all()
     # Get course color mapping
     from app.models import CourseColor
     course_colors = {c.course: c.color for c in CourseColor.query.filter_by(user_id=current_user.id).all()}

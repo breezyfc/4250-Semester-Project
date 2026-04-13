@@ -20,10 +20,6 @@
     </div>
       <div style="display: flex; align-items: center; gap: 18px; margin-bottom: 10px;">
         <div class="assign-section-label">Upcoming assignments</div>
-        <label style="font-size: 14px;">
-          <input type="checkbox" id="hideAvailableToggle" style="vertical-align: middle; margin-right: 4px;">
-          Hide 'Available' Assignments
-        </label>
       </div>
 
     <div class="widget-card" id="pomodoroWidget">
@@ -71,18 +67,22 @@
       <!-- Assignment items will be rendered by JS -->
     </ul>
       <script>
-      // Assignment filtering for home page
+      // Assignment filtering for home page (only show assignments from today forward)
       document.addEventListener('DOMContentLoaded', function() {
         const allAssignments = {{ assignments|tojson|safe }};
         const assignList = document.getElementById('assignList');
-        const hideAvailableToggle = document.getElementById('hideAvailableToggle');
 
         function renderAssignments() {
           assignList.innerHTML = '';
-          let filtered = allAssignments.filter(a => a.due_date && a.due_date.trim() !== '');
-          if (hideAvailableToggle.checked) {
-            filtered = filtered.filter(a => !(a.name && a.name.toLowerCase().includes('available')));
-          }
+          // Only show assignments with due_date today or in the future
+          const today = new Date();
+          today.setHours(0,0,0,0);
+          let filtered = allAssignments.filter(a => {
+            if (!a.due_date || a.due_date.trim() === '') return false;
+            const due = new Date(a.due_date);
+            due.setHours(0,0,0,0);
+            return due >= today;
+          });
           if (filtered.length === 0) {
             const li = document.createElement('li');
             li.className = 'assign-empty';
@@ -122,14 +122,6 @@
           });
         }
 
-        // Persist toggle state in localStorage
-        if (localStorage.getItem('hideAvailableAssignments') === 'true') {
-          hideAvailableToggle.checked = true;
-        }
-        hideAvailableToggle.addEventListener('change', function() {
-          localStorage.setItem('hideAvailableAssignments', hideAvailableToggle.checked);
-          renderAssignments();
-        });
         renderAssignments();
       });
       </script>
