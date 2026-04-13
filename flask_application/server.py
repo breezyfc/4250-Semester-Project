@@ -1,6 +1,5 @@
 # Flask web application for assignment management
 # Provides web UI for user authentication, assignment management, and calendar integration
-
 import sys
 import os
 
