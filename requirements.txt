@@ -7,8 +7,11 @@ uvicorn
 sqlalchemy
 pydantic
 flask
+flask-sqlalchemy
 flask-login
 ics
 requests
 decorators
 icalendar
+pytest
+httpx
