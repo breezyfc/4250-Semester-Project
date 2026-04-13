@@ -18,6 +18,13 @@
       </div>
       <a href="/calendar" class="widget-link">Open full calendar →</a>
     </div>
+      <div style="display: flex; align-items: center; gap: 18px; margin-bottom: 10px;">
+        <div class="assign-section-label">Upcoming assignments</div>
+        <label style="font-size: 14px;">
+          <input type="checkbox" id="hideAvailableToggle" style="vertical-align: middle; margin-right: 4px;">
+          Hide 'Available' Assignments
+        </label>
+      </div>
 
     <div class="widget-card" id="pomodoroWidget">
       <div class="widget-label">Focus Timer</div>
@@ -51,46 +58,145 @@
       <button type="button" class="add-btn" id="openFormBtn">+</button>
     </div>
 
-    <div class="assign-section-label">Upcoming assignments</div>
 
-    <ul class="assign-list">
-      {% for assignment in assignments %}
-      {% set tag_color = assignment.color or '#517664' %}
-      <li class="assign-row">
-        <div class="assign-row-left">
-          {% set p = assignment.priority_level | int if assignment.priority_level else 0 %}
-          <span class="assign-priority-dot pri-{{ p }}"></span>
-          <div style="display: flex; align-items: flex-start; gap: 10px; flex: 1; min-width: 0;">
-            <div style="min-width: 0; flex: 1;">
-              <div style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ assignment.name }}</div>
-              <div style="font-size: 12px; color: #666; margin-top: 2px; display: flex; gap: 6px; flex-wrap: wrap;">
-                {% if assignment.assignment_type %}
-                  <span style="background: #e3f2fd; color: #1565c0; padding: 2px 6px; border-radius: 3px; font-size: 11px; white-space: nowrap;">{{ assignment.assignment_type }}</span>
-                {% endif %}
-                {% if assignment.priority_level %}
-                  {% set priority_info = {
-                    1: {'text': 'Low', 'color': '#22c55e'},
-                    2: {'text': 'Medium', 'color': '#eab308'},
-                    3: {'text': 'High', 'color': '#ef4444'}
-                  }.get(assignment.priority_level | int, {'text': 'Unknown', 'color': '#6b7280'}) %}
-                  <span style="background: {{ priority_info.color }}; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; white-space: nowrap; font-weight: 500;">{{ priority_info.text }}</span>
-                {% endif %}
+    <div style="display: flex; align-items: center; gap: 18px; margin-bottom: 10px;">
+      <div class="assign-section-label">Upcoming assignments</div>
+      <label style="font-size: 14px;">
+        <input type="checkbox" id="hideAvailableToggle" style="vertical-align: middle; margin-right: 4px;">
+        Hide 'Available' Assignments
+      </label>
+    </div>
+
+    <ul class="assign-list" id="assignList">
+      <!-- Assignment items will be rendered by JS -->
+    </ul>
+      <script>
+      // Assignment filtering for home page
+      document.addEventListener('DOMContentLoaded', function() {
+        const allAssignments = {{ assignments|tojson|safe }};
+        const assignList = document.getElementById('assignList');
+        const hideAvailableToggle = document.getElementById('hideAvailableToggle');
+
+        function renderAssignments() {
+          assignList.innerHTML = '';
+          let filtered = allAssignments.filter(a => a.due_date && a.due_date.trim() !== '');
+          if (hideAvailableToggle.checked) {
+            filtered = filtered.filter(a => !(a.name && a.name.toLowerCase().includes('available')));
+          }
+          if (filtered.length === 0) {
+            const li = document.createElement('li');
+            li.className = 'assign-empty';
+            li.textContent = 'No assignments yet — add one to get started.';
+            assignList.appendChild(li);
+            return;
+          }
+          filtered.forEach(assignment => {
+            const p = assignment.priority_level ? parseInt(assignment.priority_level) : 0;
+            const tag_color = assignment.color || '#517664';
+            const li = document.createElement('li');
+            li.className = 'assign-row';
+            li.innerHTML = `
+              <div class="assign-row-left">
+                <span class="assign-priority-dot pri-${p}"></span>
+                <div style="display: flex; align-items: flex-start; gap: 10px; flex: 1; min-width: 0;">
+                  <div style="min-width: 0; flex: 1;">
+                    <div style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${assignment.name}</div>
+                    <div style="font-size: 12px; color: #666; margin-top: 2px; display: flex; gap: 6px; flex-wrap: wrap;">
+                      ${assignment.assignment_type ? `<span style="background: #e3f2fd; color: #1565c0; padding: 2px 6px; border-radius: 3px; font-size: 11px; white-space: nowrap;">${assignment.assignment_type}</span>` : ''}
+                      ${assignment.priority_level ? (() => {
+                        const priorityMap = {1: {text: 'Low', color: '#22c55e'}, 2: {text: 'Medium', color: '#eab308'}, 3: {text: 'High', color: '#ef4444'}};
+                        const info = priorityMap[p] || {text: 'Unknown', color: '#6b7280'};
+                        return `<span style="background: ${info.color}; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; white-space: nowrap; font-weight: 500;">${info.text}</span>`;
+                      })() : ''}
+                    </div>
+                  </div>
+                  ${(assignment.course && assignment.course !== assignment.name) ? `<span class="assign-tag" data-color="${tag_color}" style="white-space: nowrap; flex-shrink: 0; border-color: ${tag_color}; color: ${tag_color}; background-color: ${tag_color}18;">${assignment.course}</span>` : ''}
+                </div>
+              </div>
+              <div class="assign-row-right">
+                <span class="assign-due">${assignment.due_date}</span>
+                <button class="assign-action-btn" title="Options">···</button>
+              </div>
+            `;
+            assignList.appendChild(li);
+          });
+        }
+
+        // Persist toggle state in localStorage
+        if (localStorage.getItem('hideAvailableAssignments') === 'true') {
+          hideAvailableToggle.checked = true;
+        }
+        hideAvailableToggle.addEventListener('change', function() {
+          localStorage.setItem('hideAvailableAssignments', hideAvailableToggle.checked);
+          renderAssignments();
+        });
+        renderAssignments();
+      });
+      </script>
+
+    <script>
+    // Assignment filtering for home page
+    document.addEventListener('DOMContentLoaded', function() {
+      const allAssignments = {{ assignments|tojson|safe }};
+      const assignList = document.getElementById('assignList');
+      const hideAvailableToggle = document.getElementById('hideAvailableToggle');
+
+      function renderAssignments() {
+        assignList.innerHTML = '';
+        let filtered = allAssignments.filter(a => a.due_date && a.due_date.trim() !== '');
+        if (hideAvailableToggle.checked) {
+          filtered = filtered.filter(a => !(a.name && a.name.toLowerCase().includes('available')));
+        }
+        if (filtered.length === 0) {
+          const li = document.createElement('li');
+          li.className = 'assign-empty';
+          li.textContent = 'No assignments yet — add one to get started.';
+          assignList.appendChild(li);
+          return;
+        }
+        filtered.forEach(assignment => {
+          const p = assignment.priority_level ? parseInt(assignment.priority_level) : 0;
+          const tag_color = assignment.color || '#517664';
+          const li = document.createElement('li');
+          li.className = 'assign-row';
+          li.innerHTML = `
+            <div class="assign-row-left">
+              <span class="assign-priority-dot pri-${p}"></span>
+              <div style="display: flex; align-items: flex-start; gap: 10px; flex: 1; min-width: 0;">
+                <div style="min-width: 0; flex: 1;">
+                  <div style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${assignment.name}</div>
+                  <div style="font-size: 12px; color: #666; margin-top: 2px; display: flex; gap: 6px; flex-wrap: wrap;">
+                    ${assignment.assignment_type ? `<span style="background: #e3f2fd; color: #1565c0; padding: 2px 6px; border-radius: 3px; font-size: 11px; white-space: nowrap;">${assignment.assignment_type}</span>` : ''}
+                    ${assignment.priority_level ? (() => {
+                      const priorityMap = {1: {text: 'Low', color: '#22c55e'}, 2: {text: 'Medium', color: '#eab308'}, 3: {text: 'High', color: '#ef4444'}};
+                      const info = priorityMap[p] || {text: 'Unknown', color: '#6b7280'};
+                      return `<span style="background: ${info.color}; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; white-space: nowrap; font-weight: 500;">${info.text}</span>`;
+                    })() : ''}
+                  </div>
+                </div>
+                ${(assignment.course && assignment.course !== assignment.name) ? `<span class="assign-tag" data-color="${tag_color}" style="white-space: nowrap; flex-shrink: 0; border-color: ${tag_color}; color: ${tag_color}; background-color: ${tag_color}18;">${assignment.course}</span>` : ''}
               </div>
             </div>
-            {% if assignment.course and assignment.course != assignment.name %}
-              <span class="assign-tag" data-color="{{ tag_color }}" style="white-space: nowrap; flex-shrink: 0;">{{ assignment.course }}</span>
-            {% endif %}
-          </div>
-        </div>
-        <div class="assign-row-right">
-          <span class="assign-due">{{ assignment.due_date }}</span>
-          <button class="assign-action-btn" title="Options">···</button>
-        </div>
-      </li>
-      {% else %}
-      <li class="assign-empty">No assignments yet — add one to get started.</li>
-      {% endfor %}
-    </ul>
+            <div class="assign-row-right">
+              <span class="assign-due">${assignment.due_date}</span>
+              <button class="assign-action-btn" title="Options">···</button>
+            </div>
+          `;
+          assignList.appendChild(li);
+        });
+      }
+
+      // Persist toggle state in localStorage
+      if (localStorage.getItem('hideAvailableAssignments') === 'true') {
+        hideAvailableToggle.checked = true;
+      }
+      hideAvailableToggle.addEventListener('change', function() {
+        localStorage.setItem('hideAvailableAssignments', hideAvailableToggle.checked);
+        renderAssignments();
+      });
+      renderAssignments();
+    });
+    </script>
 
   </main>
 </div>
@@ -222,6 +328,94 @@ document.addEventListener("DOMContentLoaded", function () {
   let cur   = new Date();
   const tod = new Date();
 
+    // Assignment data for mini calendar
+    const miniAssignments = {{ assignments|tojson|safe }};
+    // Map assignments by date (YYYY-MM-DD)
+    const miniEventsByDate = {};
+    miniAssignments.forEach(a => {
+      if (!a.due_date) return;
+      const date = a.due_date.trim();
+      if (!miniEventsByDate[date]) miniEventsByDate[date] = [];
+      miniEventsByDate[date].push(a);
+    });
+
+    function drawMini() {
+      const y = cur.getFullYear(), m = cur.getMonth();
+      document.getElementById("miniCalTitle").textContent = months[m].slice(0,3) + " " + y;
+      const grid = document.getElementById("miniCalGrid");
+      grid.innerHTML = "";
+      days.forEach(d => {
+        const lbl = document.createElement("div");
+        lbl.className = "mc-lbl"; lbl.textContent = d; grid.appendChild(lbl);
+      });
+      const fd  = new Date(y, m, 1).getDay();
+      const dim = new Date(y, m+1, 0).getDate();
+      for (let i = 0; i < fd; i++) {
+        const e = document.createElement("div"); e.className = "mc-day empty"; grid.appendChild(e);
+      }
+      for (let d = 1; d <= dim; d++) {
+        const cell = document.createElement("div");
+        cell.className = "mc-day"; cell.textContent = d;
+        if (d === tod.getDate() && m === tod.getMonth() && y === tod.getFullYear())
+          cell.classList.add("mc-today");
+
+        // Add assignment dots if any
+        const key = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        if (miniEventsByDate[key]) {
+          cell.style.position = 'relative';
+          // Show up to 3 colored dots for unique courses
+          const courseColors = {};
+          miniEventsByDate[key].forEach(evt => {
+            const course = evt.course || 'uncategorized';
+            if (!courseColors[course]) {
+              courseColors[course] = evt.color || '#517664';
+            }
+          });
+          const dots = Object.values(courseColors).slice(0,3);
+          const dotWrap = document.createElement('div');
+          dotWrap.style.display = 'flex';
+          dotWrap.style.justifyContent = 'center';
+          dotWrap.style.gap = '3px';
+          dotWrap.style.marginTop = '2px';
+          dots.forEach(color => {
+            const dot = document.createElement('span');
+            dot.style.display = 'inline-block';
+            dot.style.width = '6px';
+            dot.style.height = '6px';
+            dot.style.borderRadius = '50%';
+            dot.style.background = color;
+            dotWrap.appendChild(dot);
+          });
+          cell.appendChild(dotWrap);
+        }
+        grid.appendChild(cell);
+      }
+    }
+    document.getElementById("miniPrev").addEventListener("click", () => { cur.setMonth(cur.getMonth()-1); drawMini(); });
+    document.getElementById("miniNext").addEventListener("click", () => { cur.setMonth(cur.getMonth()+1); drawMini(); });
+    drawMini();
+
+    // Hide Available Assignments filter logic (copied from assignments page)
+    const allAssignmentsCards = Array.from(document.querySelectorAll('.assignment-card'));
+    const hideAvailableToggle = document.getElementById('hideAvailableToggle');
+    if (localStorage.getItem('hideAvailableAssignments') === 'true') {
+      hideAvailableToggle.checked = true;
+    }
+    function filterAssignments() {
+      const hideAvailable = hideAvailableToggle.checked;
+      allAssignmentsCards.forEach(card => {
+        const title = card.querySelector('div[style*="font-weight: 500"]')?.textContent || '';
+        if (hideAvailable && title.toLowerCase().includes('available')) {
+          card.style.display = 'none';
+        } else {
+          card.style.display = '';
+        }
+      });
+      localStorage.setItem('hideAvailableAssignments', hideAvailableToggle.checked);
+    }
+    hideAvailableToggle.addEventListener('change', filterAssignments);
+    window.addEventListener('DOMContentLoaded', filterAssignments);
+
   function drawMini() {
     const y = cur.getFullYear(), m = cur.getMonth();
     document.getElementById("miniCalTitle").textContent = months[m].slice(0,3) + " " + y;
@@ -241,6 +435,36 @@ document.addEventListener("DOMContentLoaded", function () {
       cell.className = "mc-day"; cell.textContent = d;
       if (d === tod.getDate() && m === tod.getMonth() && y === tod.getFullYear())
         cell.classList.add("mc-today");
+
+        // Add assignment dots if any
+        const key = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        if (miniEventsByDate[key]) {
+          cell.style.position = 'relative';
+          // Show up to 3 colored dots for unique courses
+          const courseColors = {};
+          miniEventsByDate[key].forEach(evt => {
+            const course = evt.course || 'uncategorized';
+            if (!courseColors[course]) {
+              courseColors[course] = evt.color || '#517664';
+            }
+          });
+          const dots = Object.values(courseColors).slice(0,3);
+          const dotWrap = document.createElement('div');
+          dotWrap.style.display = 'flex';
+          dotWrap.style.justifyContent = 'center';
+          dotWrap.style.gap = '3px';
+          dotWrap.style.marginTop = '2px';
+          dots.forEach(color => {
+            const dot = document.createElement('span');
+            dot.style.display = 'inline-block';
+            dot.style.width = '6px';
+            dot.style.height = '6px';
+            dot.style.borderRadius = '50%';
+            dot.style.background = color;
+            dotWrap.appendChild(dot);
+          });
+          cell.appendChild(dotWrap);
+        }
       grid.appendChild(cell);
     }
   }

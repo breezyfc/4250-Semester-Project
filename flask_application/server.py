@@ -77,30 +77,39 @@ def load_user(user_id):
 @app.route("/account", methods=["GET", "POST"])
 @login_required  # Require user to be logged in
 def account():
+    from app.models import CourseColor, Assignment
+
     # Handle form submission (POST request)
     if request.method == "POST":
-        # Get new password from form (if provided)
+        # Update course colors
+        for key, value in request.form.items():
+            if key.startswith('color_'):
+                course = key[len('color_'):]
+                color = value
+                course_color = CourseColor.query.filter_by(user_id=current_user.id, course=course).first()
+                if course_color:
+                    course_color.color = color
+                else:
+                    db.session.add(CourseColor(user_id=current_user.id, course=course, color=color))
+                # Update all assignments for this course
+                Assignment.query.filter_by(user_id=current_user.id, course=course).update({"color": color})
+        # Update password and ICS URL as before
         new_password = request.form.get("password")
-        # Get ICS calendar URL from form (if provided)
         ics_url = request.form.get("ics_url")
-
-        # Update password if provided
         if new_password:
             current_user.set_password(new_password)
-
-        # Update ICS URL if provided
         if ics_url:
             current_user.ics_url = ics_url
-
-        # Save changes to database
         db.session.commit()
-        # Show success message
         flash("Account updated!", "success")
-        # Redirect to account page to show updated info
         return redirect(url_for("account"))
 
-    # Handle GET request - show account page
-    return render_template("account.html")
+    # Gather all courses for this user (from assignments and course colors)
+    course_names = set([a.course for a in Assignment.query.filter_by(user_id=current_user.id).all() if a.course])
+    course_colors = {c.course: c.color for c in CourseColor.query.filter_by(user_id=current_user.id).all()}
+    courses = [(course, course_colors.get(course, "#517664")) for course in sorted(course_names)]
+    print("[DEBUG] Course colors for account page:", courses)
+    return render_template("account.html", courses=courses)
 
 # 3 routes -- login, logout, register
 # REGISTER PAGE - Allows new users to create an account
@@ -195,8 +204,28 @@ def logout():
 def index():
     # Query all assignments for current user, sorted by due date
     assignments = Assignment.query.filter_by(user_id=current_user.id).order_by(Assignment.due_date).all()
-    # Render template with assignments
-    return render_template('index.html', assignments=assignments)
+    # Get course color mapping
+    from app.models import CourseColor
+    course_colors = {c.course: c.color for c in CourseColor.query.filter_by(user_id=current_user.id).all()}
+
+    # Convert Assignment objects to dicts for JSON serialization in template
+    def assignment_to_dict(a):
+        color = course_colors.get(a.course, a.color or "#517664")
+        return {
+            "id": a.id,
+            "name": a.name,
+            "due_date": a.due_date,
+            "due_time": a.due_time,
+            "course": a.course,
+            "course_id": a.course_id,
+            "color": color,
+            "priority_level": a.priority_level,
+            "assignment_type": a.assignment_type,
+            "points": a.points,
+            "ics_uid": a.ics_uid,
+        }
+    assignments_dict = [assignment_to_dict(a) for a in assignments]
+    return render_template('index.html', assignments=assignments_dict)
 
 
 # CREATE NEW ASSIGNMENT - Adds a new assignment to the database
@@ -277,6 +306,10 @@ def about():
             print(f"Error parsing due_date '{due_date}': {e}")
             return None
 
+    # Use CourseColor for color lookup
+    from app.models import CourseColor
+    course_colors = {c.course: c.color for c in CourseColor.query.filter_by(user_id=current_user.id).all()}
+
     assignments = []
     for a in raw_assignments:
         if hide_available and a.name and 'available' in a.name.lower():
@@ -284,6 +317,7 @@ def about():
         normalized_date = normalize_date(a.due_date)
         if not normalized_date:
             continue
+        color = course_colors.get(a.course, a.color or '#517664')
         assignments.append({
             'id': a.id,
             'name': a.name,
@@ -295,7 +329,7 @@ def about():
             'priority_level': a.priority_level,
             'points': a.points,
             'ics_uid': a.ics_uid,
-            'color': a.color or '#517664',
+            'color': color,
         })
     return render_template("calendar.html", assignments=assignments)
 

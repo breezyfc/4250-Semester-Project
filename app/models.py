@@ -1,12 +1,23 @@
+
 # Flask-SQLAlchemy ORM models for the Flask web application
 # Defines User and Assignment database tables and relationships
-
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # Initialize SQLAlchemy database instance (will be attached to Flask app in server.py)
 db = SQLAlchemy()
+
+# --- CourseColor model for user course color preferences ---
+from sqlalchemy.orm import relationship
+
+class CourseColor(db.Model):
+    __tablename__ = "course_colors"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    course = db.Column(db.String, nullable=False)
+    color = db.Column(db.String(7), nullable=False, default="#517664")
+    __table_args__ = (db.UniqueConstraint('user_id', 'course', name='_user_course_uc'),)
 
 class User(UserMixin, db.Model):
     """
