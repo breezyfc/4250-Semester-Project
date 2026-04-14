@@ -30,6 +30,7 @@
           <button class="pomo-tab active" onclick="setMode(this,25,'Focus')">Focus</button>
           <button class="pomo-tab" onclick="setMode(this,5,'Short Break')">Short</button>
           <button class="pomo-tab" onclick="setMode(this,15,'Long Break')">Long</button>
+          <button class="pomo-tab" onclick="setCustomMode(this)">Custom</button>
         </div>
         <div class="pomo-controls">
           <button class="pomo-btn" id="pomoStartStop" onclick="togglePomo()">Start</button>
@@ -473,6 +474,25 @@ document.addEventListener("DOMContentLoaded", function () {
     window._pm = mins;
     resetPomo();
   };
+
+  window.setCustomMode = function(btn) {
+  const input = prompt("Enter custom time in minutes:");
+
+  if (!input) return;
+
+  const mins = parseInt(input);
+
+  if (isNaN(mins) || mins <= 0) {
+    alert("Please enter a valid number.");
+    return;
+  }
+
+  document.querySelectorAll(".pomo-tab").forEach(t => t.classList.remove("active"));
+  btn.classList.add("active");
+
+  window._pm = mins;
+  resetPomo();
+};
 
   window.togglePomo = function() {
     if (window._pr) {
