@@ -67,87 +67,10 @@
     <ul class="assign-list" id="assignList">
       <!-- Assignment items will be rendered by JS -->
     </ul>
-      <script>
-      // Assignment filtering for home page (only show assignments from today forward)
-      document.addEventListener('DOMContentLoaded', function() {
-        window.allAssignments = {{ assignments|tojson|safe }};
-        const assignList = document.getElementById('assignList');
 
-        function renderAssignments() {
-          assignList.innerHTML = '';
-          // Only show assignments with due_date today or in the future
-          const today = new Date();
-          today.setHours(0,0,0,0);
-          let filtered = allAssignments.filter(a => {
-            if (!a.due_date || a.due_date.trim() === '') return false;
-            const due = new Date(a.due_date);
-            due.setHours(0,0,0,0);
-            return due >= today;
-          });
-          if (filtered.length === 0) {
-            const li = document.createElement('li');
-            li.className = 'assign-empty';
-            li.textContent = 'No assignments yet — add one to get started.';
-            assignList.appendChild(li);
-            return;
-          }
-          filtered.forEach(assignment => {
-            const p = assignment.priority_level ? parseInt(assignment.priority_level) : 0;
-            const tag_color = assignment.color || '#517664';
-            const li = document.createElement('li');
-            li.className = 'assign-row';
-            li.innerHTML = `
-              <div class="assign-row-left">
-                <span class="assign-priority-dot pri-${p}"></span>
-                <div style="display: flex; align-items: flex-start; gap: 10px; flex: 1; min-width: 0;">
-                  <div style="min-width: 0; flex: 1;">
-                    <div style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${assignment.name}</div>
-                    <div style="font-size: 12px; color: #666; margin-top: 2px; display: flex; gap: 6px; flex-wrap: wrap;">
-                      ${assignment.assignment_type ? `<span style="background: #e3f2fd; color: #1565c0; padding: 2px 6px; border-radius: 3px; font-size: 11px; white-space: nowrap;">${assignment.assignment_type}</span>` : ''}
-                      ${assignment.priority_level ? (() => {
-                        const priorityMap = {1: {text: 'Low', color: '#22c55e'}, 2: {text: 'Medium', color: '#eab308'}, 3: {text: 'High', color: '#ef4444'}};
-                        const info = priorityMap[p] || {text: 'Unknown', color: '#6b7280'};
-                        return `<span style="background: ${info.color}; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; white-space: nowrap; font-weight: 500;">${info.text}</span>`;
-                      })() : ''}
-                    </div>
-                  </div>
-                  ${(assignment.course && assignment.course !== assignment.name) ? `<span class="assign-tag" data-color="${tag_color}" style="white-space: nowrap; flex-shrink: 0; border-color: ${tag_color}; color: ${tag_color}; background-color: ${tag_color}18;">${assignment.course}</span>` : ''}
-                </div>
-              </div>
-              <div class="assign-row-right">
-                <span class="assign-due">${assignment.due_date}</span>
-<div class="assign-options-wrap" style="position:relative;">
-  <button class="assign-action-btn" title="Options" onclick="toggleMenu(event, ${assignment.id})">···</button>
-  <div class="assign-dropdown" id="menu-${assignment.id}" style="display:none; position:absolute; right:0; top:100%; background:white; border:1px solid #ddd; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,0.12); z-index:100; min-width:130px;">
-    <button onclick="openEditModal(${assignment.id})" style="display:block; width:100%; padding:8px 16px; text-align:left; border:none; background:none; cursor:pointer;">✏️ Edit</button>
-    <form method="POST" action="/assignments/${assignment.id}/delete" onsubmit="return confirm('Delete this assignment?')">
-      <button type="submit" style="display:block; width:100%; padding:8px 16px; text-align:left; border:none; background:none; cursor:pointer; color:#e53e3e;">🗑️ Delete</button>
-    </form>
-  </div>
-</div>
-              </div>
-            `;
-            assignList.appendChild(li);
-          });
-        }
-
-        renderAssignments();
-      });
-      // Toggle dropdown menu
-window.toggleMenu = function(e, id) {
-  e.stopPropagation();
-  document.querySelectorAll('.assign-dropdown').forEach(d => {
-    if (d.id !== 'menu-' + id) d.style.display = 'none';
-  });
-  const menu = document.getElementById('menu-' + id);
-  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-};
-// Close menus when clicking outside
-document.addEventListener('click', () => {
-  document.querySelectorAll('.assign-dropdown').forEach(d => d.style.display = 'none');
-});
-
-// Edit modal
+<script>
+// Only define assignments once globally and silence JS errors
+window.allAssignments = JSON.parse('{{ assignments|tojson|safe }}');
 </script>
 
 <script>
@@ -167,51 +90,50 @@ window.closeEditModal = function() {
 };
 </script>
 
-    <script>
-    // Assignment filtering for home page
-    document.addEventListener('DOMContentLoaded', function() {
-      const allAssignments = {{ assignments|tojson|safe }};
-      const assignList = document.getElementById('assignList');
-      const hideAvailableToggle = document.getElementById('hideAvailableToggle');
 
-      function renderAssignments() {
-        assignList.innerHTML = '';
-        let filtered = allAssignments.filter(a => a.due_date && a.due_date.trim() !== '');
-        if (hideAvailableToggle.checked) {
-          filtered = filtered.filter(a => !(a.name && a.name.toLowerCase().includes('available')));
-        }
-        if (filtered.length === 0) {
-          const li = document.createElement('li');
-          li.className = 'assign-empty';
-          li.textContent = 'No assignments yet — add one to get started.';
-          assignList.appendChild(li);
-          return;
-        }
-        filtered.forEach(assignment => {
-          const p = assignment.priority_level ? parseInt(assignment.priority_level) : 0;
-          const tag_color = assignment.color || '#517664';
-          const li = document.createElement('li');
-          li.className = 'assign-row';
-          li.innerHTML = `
-            <div class="assign-row-left">
-              <span class="assign-priority-dot pri-${p}"></span>
-              <div style="display: flex; align-items: flex-start; gap: 10px; flex: 1; min-width: 0;">
-                <div style="min-width: 0; flex: 1;">
-                  <div style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${assignment.name}</div>
-                  <div style="font-size: 12px; color: #666; margin-top: 2px; display: flex; gap: 6px; flex-wrap: wrap;">
-                    ${assignment.assignment_type ? `<span style="background: #e3f2fd; color: #1565c0; padding: 2px 6px; border-radius: 3px; font-size: 11px; white-space: nowrap;">${assignment.assignment_type}</span>` : ''}
-                    ${assignment.priority_level ? (() => {
-                      const priorityMap = {1: {text: 'Low', color: '#22c55e'}, 2: {text: 'Medium', color: '#eab308'}, 3: {text: 'High', color: '#ef4444'}};
-                      const info = priorityMap[p] || {text: 'Unknown', color: '#6b7280'};
-                      return `<span style="background: ${info.color}; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; white-space: nowrap; font-weight: 500;">${info.text}</span>`;
-                    })() : ''}
-                  </div>
-                </div>
-                ${(assignment.course && assignment.course !== assignment.name) ? `<span class="assign-tag" data-color="${tag_color}" style="white-space: nowrap; flex-shrink: 0; border-color: ${tag_color}; color: ${tag_color}; background-color: ${tag_color}18;">${assignment.course}</span>` : ''}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const assignList = document.getElementById('assignList');
+  const hideAvailableToggle = document.getElementById('hideAvailableToggle');
+
+  function renderAssignments() {
+    assignList.innerHTML = '';
+    let filtered = window.allAssignments.filter(a => a.due_date && a.due_date.trim() !== '');
+    if (hideAvailableToggle.checked) {
+      filtered = filtered.filter(a => !(a.name && a.name.toLowerCase().includes('available')));
+    }
+    if (filtered.length === 0) {
+      const li = document.createElement('li');
+      li.className = 'assign-empty';
+      li.textContent = 'No assignments yet — add one to get started.';
+      assignList.appendChild(li);
+      return;
+    }
+    filtered.forEach(assignment => {
+      const p = assignment.priority_level ? parseInt(assignment.priority_level) : 0;
+      const tag_color = assignment.color || '#517664';
+      const li = document.createElement('li');
+      li.className = 'assign-row';
+      li.innerHTML = `
+        <div class="assign-row-left">
+          <span class="assign-priority-dot pri-${p}"></span>
+          <div style="display: flex; align-items: flex-start; gap: 10px; flex: 1; min-width: 0;">
+            <div style="min-width: 0; flex: 1;">
+              <div style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${assignment.name}</div>
+              <div style="font-size: 12px; color: #666; margin-top: 2px; display: flex; gap: 6px; flex-wrap: wrap;">
+                ${assignment.assignment_type ? `<span style="background: #e3f2fd; color: #1565c0; padding: 2px 6px; border-radius: 3px; font-size: 11px; white-space: nowrap;">${assignment.assignment_type}</span>` : ''}
+                ${assignment.priority_level ? (() => {
+                  const priorityMap = {1: {text: 'Low', color: '#22c55e'}, 2: {text: 'Medium', color: '#eab308'}, 3: {text: 'High', color: '#ef4444'}};
+                  const info = priorityMap[p] || {text: 'Unknown', color: '#6b7280'};
+                  return `<span style="background: ${info.color}; color: white; padding: 2px 6px; border-radius: 3px; font-size: 11px; white-space: nowrap; font-weight: 500;">${info.text}</span>`;
+                })() : ''}
               </div>
             </div>
-            <div class="assign-row-right">
-              <span class="assign-due">${assignment.due_date}</span>
+            ${(assignment.course && assignment.course !== assignment.name) ? `<span class="assign-tag" data-color="${tag_color}" style="white-space: nowrap; flex-shrink: 0; border-color: ${tag_color}; color: ${tag_color}; background-color: ${tag_color}18;">${assignment.course}</span>` : ''}
+          </div>
+        </div>
+        <div class="assign-row-right">
+          <span class="assign-due">${assignment.due_date}</span>
 <div class="assign-options-wrap" style="position:relative;">
   <button class="assign-action-btn" title="Options" onclick="toggleMenu(event, ${assignment.id})">···</button>
   <div class="assign-dropdown" id="menu-${assignment.id}" style="display:none; position:absolute; right:0; top:100%; background:white; border:1px solid #ddd; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,0.12); z-index:100; min-width:130px;">
@@ -221,23 +143,24 @@ window.closeEditModal = function() {
     </form>
   </div>
 </div>
-            </div>
-          `;
-          assignList.appendChild(li);
-        });
-      }
-
-      // Persist toggle state in localStorage
-      if (localStorage.getItem('hideAvailableAssignments') === 'true') {
-        hideAvailableToggle.checked = true;
-      }
-      hideAvailableToggle.addEventListener('change', function() {
-        localStorage.setItem('hideAvailableAssignments', hideAvailableToggle.checked);
-        renderAssignments();
-      });
-      renderAssignments();
+        </div>
+      `;
+      assignList.appendChild(li);
     });
-    // Toggle dropdown menu
+  }
+
+  // Persist toggle state in localStorage
+  if (localStorage.getItem('hideAvailableAssignments') === 'true') {
+    hideAvailableToggle.checked = true;
+  }
+  hideAvailableToggle.addEventListener('change', function() {
+    localStorage.setItem('hideAvailableAssignments', hideAvailableToggle.checked);
+    renderAssignments();
+  });
+  renderAssignments();
+});
+
+// Toggle dropdown menu
 window.toggleMenu = function(e, id) {
   e.stopPropagation();
   document.querySelectorAll('.assign-dropdown').forEach(d => {
@@ -253,7 +176,7 @@ document.addEventListener('click', () => {
 
 // Edit modal
 window.openEditModal = function(id) {
-  const a = allAssignments.find(x => x.id === id);
+  const a = window.allAssignments.find(x => x.id === id);
   if (!a) return;
   document.getElementById('editAssignmentId').value = a.id;
   document.getElementById('editName').value = a.name || '';
@@ -265,7 +188,7 @@ window.openEditModal = function(id) {
 window.closeEditModal = function() {
   document.getElementById('editModal').style.display = 'none';
 };
-    </script>
+</script>
 
   </main>
 </div>
@@ -398,7 +321,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const tod = new Date();
 
     // Assignment data for mini calendar
-    const miniAssignments = {{ assignments|tojson|safe }};
+    const miniAssignments = window.allAssignments;
     // Map assignments by date (YYYY-MM-DD)
     const miniEventsByDate = {};
     miniAssignments.forEach(a => {
