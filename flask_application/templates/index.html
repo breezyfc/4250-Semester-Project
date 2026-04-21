@@ -447,11 +447,12 @@ document.addEventListener("DOMContentLoaded", function () {
   window._pr = false;
   window._pi = null;
   window._sessionIndex = 0;
+  window._initialSeconds = 1500; // default 25 min
+  
 
   window.setMode = function(btn, mins, label) {
-    document.querySelectorAll(".pomo-tab").forEach(t => t.classList.remove("active"));
-    btn.classList.add("active");
     window._pm = mins;
+    window._initialSeconds = mins * 60;
     resetPomo();
   };
 
@@ -485,6 +486,7 @@ document.addEventListener("DOMContentLoaded", function () {
     document.querySelectorAll(".pomo-tab").forEach(t => t.classList.remove("active"));
     btn.classList.add("active");
 
+    window._initialSeconds = totalSeconds;
     window._ps = totalSeconds;
     window._pm = Math.floor(totalSeconds / 60);
 
@@ -492,26 +494,53 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   window.togglePomo = function() {
+    const btn = document.getElementById("pomoStartStop");
+
+    // HANDLE RESTART STATE
+    if (btn.textContent === "Restart") {
+      window._sessionIndex = 0;
+
+      document.querySelectorAll(".pomo-dot").forEach((d, i) => {
+        d.classList.toggle("active", i === 0);
+      });
+
+      window._ps = window._initialSeconds;
+      updateDisplay();
+
+      btn.textContent = "Start";
+      return;
+    }
+
     if (window._pr) {
       clearInterval(window._pi);
       window._pr = false;
-      document.getElementById("pomoStartStop").textContent = "Resume";
+      btn.textContent = "Resume";
     } else {
       window._pr = true;
-      document.getElementById("pomoStartStop").textContent = "Pause";
+      btn.textContent = "Pause";
+
       window._pi = setInterval(() => {
         if (window._ps <= 0) {
           clearInterval(window._pi);
           window._pr = false;
 
-          // advance session dot
           advanceSession();
 
-          document.getElementById("pomoStartStop").textContent = "Start";
-          window._ps = window._pm * 60; // reset time
-          updateDisplay();
+          window._ps = window._initialSeconds;
+
+          const dots = document.querySelectorAll(".pomo-dot");
+
+          if (window._sessionIndex === 0) {
+            document.getElementById("pomoDisplay").textContent = "Done!";
+            btn.textContent = "Restart";
+          } else {
+            updateDisplay();
+            btn.textContent = "Start";
+          }
+
           return;
         }
+
         window._ps--;
         updateDisplay();
       }, 1000);
