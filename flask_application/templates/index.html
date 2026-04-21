@@ -19,9 +19,15 @@
       <a href="/calendar" class="widget-link">Open full calendar →</a>
     </div>
 
-    <div style="display: flex; align-items: center; gap: 18px; margin-bottom: 10px;">
-      <div class="assign-section-label">Upcoming assignments</div>
+    <!-- Course Filter Widget -->
+    <div class="widget-card" id="courseFilterWidget">
+      <div class="widget-label">Filter by Course</div>
+      <select id="courseFilter">
+        <option value="">All Courses</option>
+      </select>
     </div>
+
+
 
     <div class="widget-card" id="pomodoroWidget">
       <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -57,7 +63,7 @@
   <main class="dash-main">
 
     <div class="dash-main-header">
-      <h1 class="dash-title">Add new assignment</h1>
+      <h1 class="dash-title">Add New Assignment</h1>
       <button type="button" class="add-btn" id="openFormBtn">+</button>
     </div>
 
@@ -74,34 +80,27 @@
     </ul>
 
     <script type="text/javascript">
-      window.allAssignments = {{ assignments|tojson|safe }};
-    </script>
-
-    <script>
-    window.openEditModal = function(id) {
-      const a = window.allAssignments.find(x => x.id === id);
-      if (!a) {
-        console.error('Assignment not found:', id, window.allAssignments);
-        return;
-      }
-      document.getElementById('editForm').action = `/assignments/${id}/edit`;
-      document.getElementById('editAssignmentId').value = a.id;
-      document.getElementById('editName').value = a.name || '';
-      document.getElementById('editCourse').value = a.course || '';
-      document.getElementById('editDueDate').value = a.due_date || '';
-      document.getElementById('editPriority').value = a.priority_level || '';
-      document.getElementById('editModal').style.display = 'flex';
-    };
-
-    window.closeEditModal = function() {
-      document.getElementById('editModal').style.display = 'none';
-    };
+      window.allAssignments = {{ assignments | tojson | safe }};
     </script>
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
+
       const assignList = document.getElementById('assignList');
       const hideAvailableToggle = document.getElementById('hideAvailableToggle');
+      const courseFilter = document.getElementById('courseFilter');
+
+      // Populate course filter dropdown if present
+      if (courseFilter) {
+        const courses = Array.from(new Set(window.allAssignments.map(a => a.course).filter(Boolean)));
+        courses.sort();
+        courses.forEach(course => {
+          const opt = document.createElement('option');
+          opt.value = course;
+          opt.textContent = course;
+          courseFilter.appendChild(opt);
+        });
+      }
 
       function renderAssignments() {
         assignList.innerHTML = '';
@@ -109,6 +108,10 @@
 
         if (hideAvailableToggle.checked) {
           filtered = filtered.filter(a => !(a.name && a.name.toLowerCase().includes('available')));
+        }
+
+        if (courseFilter.value) {
+          filtered = filtered.filter(a => a.course === courseFilter.value);
         }
 
         if (filtered.length === 0) {
@@ -180,6 +183,10 @@
         renderAssignments();
       });
 
+      courseFilter.addEventListener('change', function() {
+        renderAssignments();
+      });
+
       renderAssignments();
     });
 
@@ -199,6 +206,7 @@
     window.openEditModal = function(id) {
       const a = window.allAssignments.find(x => x.id === id);
       if (!a) return;
+      document.getElementById('editForm').action = `/assignments/${id}/edit`;
       document.getElementById('editAssignmentId').value = a.id;
       document.getElementById('editName').value = a.name || '';
       document.getElementById('editCourse').value = a.course || '';
@@ -621,7 +629,7 @@ document.addEventListener("DOMContentLoaded", function () {
   <div style="background:white; border-radius:10px; padding:28px; min-width:320px; max-width:420px; width:90%;">
     <h2 style="margin-top:0;">Edit Assignment</h2>
     <form method="POST" id="editForm">
-      <input type="hidden" id="editAssignmentId">
+      <input type="hidden" id="editAssignmentId" name="assignment_id">
       <label>Name<br>
         <input type="text" id="editName" name="name" style="width:100%; margin-bottom:10px; padding:6px; border:1px solid #ccc; border-radius:4px;">
       </label>
