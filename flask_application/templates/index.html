@@ -327,8 +327,23 @@ document.addEventListener("DOMContentLoaded", function () {
   const fsBtn = document.getElementById("pomoFullscreenBtn");
   const widget = document.getElementById("pomodoroWidget");
 
+  // fullscreen toggle
   fsBtn.addEventListener("click", () => {
     widget.classList.toggle("fullscreen");
+
+    if (widget.classList.contains("fullscreen")) {
+      fsBtn.textContent = "✕";
+    } else {
+      fsBtn.textContent = "⛶";
+    }
+  });
+
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      widget.classList.remove("fullscreen");
+      fsBtn.textContent = "⛶";
+    }
   });
   });
 
