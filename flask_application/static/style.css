@@ -335,6 +335,18 @@ a { color: inherit; text-decoration: none; }
   transform: scale(1.5); /* makes it feel big and centered */
 }
 
+#pomodoroWidget.fullscreen #pomoFullscreenBtn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  font-size: 22px;
+  z-index: 10000;
+}
+
+#pomodoroWidget.fullscreen {
+  position: fixed;
+}
+
 /* RIGHT MAIN */
 .dash-main { padding: 32px 40px; background: var(--bg); }
 
