@@ -41,6 +41,26 @@
   --font-display: 'Lora', Georgia, serif;
 }
 
+/* Dark theme overrides */
+.dark-theme {
+  --bg:        #18191a;
+  --surface:   #23272f;
+  --sidebar:   #20232a;
+  --hover:     #23272f;
+  --text:      #e4e6eb;
+  --muted:     #b0b3b8;
+  --border:    #393b40;
+  --primary:       #8ab4f8;
+  --primary-hover: #5c7fa3;
+  --accent:        #517664;
+  --accent-hover:  #3f5e52;
+  --highlight:     #23272f;
+  /* Priority dot colors */
+  --pri-1: #22c55e;
+  --pri-2: #eab308;
+  --pri-3: #ef4444;
+}
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
@@ -162,6 +182,25 @@ a { color: inherit; text-decoration: none; }
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 16px 18px;
+  font-family: var(--font-ui);
+}
+
+#miniCalWidget,
+#courseFilterWidget {
+  margin-bottom: 0 !important;
+}
+
+#courseFilter {
+  width: 100%;
+  padding: 4px 8px;
+  margin-top: 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  font-size: 15px;
+  font-family: var(--font-ui);
+  background: #f9f9f9;
+  color: var(--text);
+  box-sizing: border-box;
 }
 
 .widget-label {
@@ -170,7 +209,7 @@ a { color: inherit; text-decoration: none; }
   letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--muted);
-  margin-bottom: 12px;
+  margin-bottom: 12px;*/
 }
 
 .widget-link {
@@ -317,6 +356,35 @@ a { color: inherit; text-decoration: none; }
 .pomo-sessions { display: flex; gap: 6px; align-items: center; }
 .pomo-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); display: inline-block; }
 .pomo-dot.active { background: var(--c-teal); }
+
+#pomodoroWidget.fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  border-radius: 0;
+  padding: 40px;
+  background: white;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#pomodoroWidget.fullscreen .pomodoro {
+  transform: scale(1.5); /* makes it feel big and centered */
+}
+
+#pomodoroWidget.fullscreen #pomoFullscreenBtn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  font-size: 22px;
+  z-index: 10000;
+}
+
+#pomodoroWidget.fullscreen {
+  position: fixed;
+}
 
 /* RIGHT MAIN */
 .dash-main { padding: 32px 40px; background: var(--bg); }

@@ -269,6 +269,7 @@ def new_assignment():
             ))
 
         db.session.commit()
+        
     # Send POST request to FastAPI backend to create assignment
     requests.post("http://127.0.0.1:8000/assignments/", json=data)
     # Redirect to home page to show new assignment
