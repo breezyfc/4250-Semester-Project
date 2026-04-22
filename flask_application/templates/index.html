@@ -152,7 +152,7 @@
               <span class="assign-priority-dot pri-${p}"></span>
               <div style="display: flex; align-items: flex-start; gap: 10px; flex: 1; min-width: 0;">
                 <div style="min-width: 0; flex: 1;">
-                  <div style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${assignment.name}</div>
+                  <div style="font-weight: 500; overflow-wrap: break-word; word-break: break-word;">${assignment.name}</div>
                   <div style="font-size: 12px; color: #666; margin-top: 2px; display: flex; gap: 6px; flex-wrap: wrap;">
                     ${assignment.assignment_type ? `<span style="background: #e3f2fd; color: #1565c0; padding: 2px 6px; border-radius: 3px; font-size: 11px; white-space: nowrap;">${assignment.assignment_type}</span>` : ''}
                     ${assignment.priority_level ? (() => {

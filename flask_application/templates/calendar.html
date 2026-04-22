@@ -222,7 +222,7 @@ document.addEventListener('DOMContentLoaded', function() {
         : '';
 
       card.innerHTML =
-        '<div style="font-weight: 600; font-size: 14px; margin-bottom: 8px; color: #1f2937;">' + (item.name || 'Untitled') + '</div>' +
+        '<div style="font-weight: 600; font-size: 14px; margin-bottom: 8px; color: #1f2937; overflow-wrap: break-word; word-break: break-word;">' + (item.name || 'Untitled') + '</div>' +
         '<div style="font-size: 12px; color: #1f2937; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;"><span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: ' + dotColor + '; flex-shrink: 0;"></span><strong>Course:</strong> ' + courseDisplay + '</div>' +
         '<div style="font-size: 12px; color: #1f2937; margin-bottom: 4px;"><strong>Type:</strong> ' + typeTag + '</div>' +
         '<div style="font-size: 12px; color: #1f2937; margin-bottom: 4px;"><strong>Due:</strong> ' + dueDatetime + '</div>' +

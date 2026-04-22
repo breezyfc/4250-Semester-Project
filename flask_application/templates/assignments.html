@@ -28,7 +28,7 @@
                     <!-- Header with title and type -->
                     <div class="assignment-card-header" style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
                         <div style="flex: 1;">
-                            <h3 style="margin: 0; font-size: 18px; color: #1f2937;">{{ assignment.name }}</h3>
+                            <h3 style="margin: 0; font-size: 18px; color: #1f2937; overflow-wrap: break-word; word-break: break-word;">{{ assignment.name }}</h3>
                             {% if assignment.assignment_type %}
                                 <span style="background: #dbeafe; color: #1e40af; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 500; display: inline-block; margin-top: 6px;">{{ assignment.assignment_type }}</span>
                             {% endif %}
