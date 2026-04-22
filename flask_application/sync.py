@@ -87,10 +87,10 @@ def parse_ics_date(ics_date_str):
         if tz:
             dt = dt.replace(tzinfo=tz)
 
-    # Convert explicit UTC/offset times to local timezone for day display.
+    # Convert explicit UTC/offset times to Eastern Time for day display.
     # Keep TZID/floating times as-is so they don't drift by host timezone.
     if source_has_explicit_offset and dt.tzinfo is not None:
-        dt = dt.astimezone()
+        dt = dt.astimezone(ZoneInfo("America/New_York"))
 
     due_date = dt.date().isoformat()
     due_time = dt.time().strftime("%H:%M:%S")
