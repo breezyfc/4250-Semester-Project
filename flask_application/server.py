@@ -20,6 +20,7 @@ from datetime import date, datetime, timedelta
 import threading
 import time
 import json
+import base64
 
 try:
     from plyer import notification as plyer_notification
@@ -31,6 +32,13 @@ try:
 except Exception:
     webpush = None
     WebPushException = Exception
+
+try:
+    from py_vapid import Vapid
+    from cryptography.hazmat.primitives import serialization
+except Exception:
+    Vapid = None
+    serialization = None
 
 # Initialize Flask application
 app = Flask(__name__)
@@ -49,6 +57,86 @@ URL = 'http://127.0.0.1:8000'
 # DATABASE CONFIGURATION
 # Get project root directory for locating database file
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+
+
+def _public_vapid_key_from_private_pem(private_pem):
+    if not private_pem or Vapid is None or serialization is None:
+        return ""
+    try:
+        vapid_obj = Vapid.from_string(private_pem)
+        public_raw = vapid_obj.public_key.public_bytes(
+            encoding=serialization.Encoding.X962,
+            format=serialization.PublicFormat.UncompressedPoint,
+        )
+        return base64.urlsafe_b64encode(public_raw).decode().rstrip("=")
+    except Exception as exc:
+        print(f"[WARN] Failed to derive VAPID public key from private key: {exc}")
+        return ""
+
+
+def _init_vapid_keys():
+    global VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_PRIVATE_KEY_PATH
+
+    if webpush is None:
+        return
+
+    configured_private = ""
+    if VAPID_PRIVATE_KEY:
+        configured_private = VAPID_PRIVATE_KEY.replace("\\n", "\n")
+    elif VAPID_PRIVATE_KEY_PATH and os.path.exists(VAPID_PRIVATE_KEY_PATH):
+        try:
+            with open(VAPID_PRIVATE_KEY_PATH, "r", encoding="utf-8") as file_obj:
+                configured_private = file_obj.read().strip()
+        except Exception as exc:
+            print(f"[WARN] Failed to read VAPID private key file: {exc}")
+
+    if VAPID_PUBLIC_KEY and configured_private:
+        VAPID_PRIVATE_KEY = configured_private
+        return
+
+    if configured_private and not VAPID_PUBLIC_KEY:
+        derived_public = _public_vapid_key_from_private_pem(configured_private)
+        if derived_public:
+            VAPID_PRIVATE_KEY = configured_private
+            VAPID_PUBLIC_KEY = derived_public
+            return
+
+    if Vapid is None or serialization is None:
+        print("[WARN] Web push keys are missing and py_vapid is unavailable; push notifications are disabled.")
+        return
+
+    try:
+        instance_dir = os.path.join(BASE_DIR, "instance")
+        os.makedirs(instance_dir, exist_ok=True)
+        auto_private_path = os.path.join(instance_dir, "vapid_private.pem")
+
+        if os.path.exists(auto_private_path):
+            with open(auto_private_path, "r", encoding="utf-8") as file_obj:
+                auto_private = file_obj.read().strip()
+            auto_public = _public_vapid_key_from_private_pem(auto_private)
+        else:
+            vapid_obj = Vapid()
+            vapid_obj.generate_keys()
+            auto_private = vapid_obj.private_pem().decode("utf-8").strip()
+            public_raw = vapid_obj.public_key.public_bytes(
+                encoding=serialization.Encoding.X962,
+                format=serialization.PublicFormat.UncompressedPoint,
+            )
+            auto_public = base64.urlsafe_b64encode(public_raw).decode().rstrip("=")
+            with open(auto_private_path, "w", encoding="utf-8") as file_obj:
+                file_obj.write(auto_private)
+
+        if auto_private and auto_public:
+            VAPID_PRIVATE_KEY = auto_private
+            VAPID_PUBLIC_KEY = auto_public
+            if not VAPID_PRIVATE_KEY_PATH:
+                VAPID_PRIVATE_KEY_PATH = auto_private_path
+            print(f"[INFO] Web push keys ready. Public key loaded; private key at {VAPID_PRIVATE_KEY_PATH}")
+    except Exception as exc:
+        print(f"[WARN] Could not initialize VAPID keys automatically: {exc}")
+
+
+_init_vapid_keys()
 # SQLAlchemy configuration for SQLite database
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{os.path.join(BASE_DIR, 'users.db')}"
 # Disable automatic tracking of modifications (improves performance)
