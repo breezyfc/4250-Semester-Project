@@ -60,4 +60,192 @@
         }
     });
 </script>
+{% if current_user.is_authenticated %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        function showInAppToast(message) {
+            let host = document.getElementById('notificationToastHost');
+            if (!host) {
+                host = document.createElement('div');
+                host.id = 'notificationToastHost';
+                host.style.position = 'fixed';
+                host.style.right = '16px';
+                host.style.bottom = '16px';
+                host.style.zIndex = '9999';
+                host.style.display = 'flex';
+                host.style.flexDirection = 'column';
+                host.style.gap = '8px';
+                document.body.appendChild(host);
+            }
+
+            const toast = document.createElement('div');
+            toast.style.background = '#2d3a6b';
+            toast.style.color = 'white';
+            toast.style.padding = '10px 12px';
+            toast.style.borderRadius = '8px';
+            toast.style.boxShadow = '0 4px 14px rgba(0,0,0,0.2)';
+            toast.style.maxWidth = '320px';
+            toast.style.fontSize = '0.9rem';
+            toast.textContent = message;
+            host.appendChild(toast);
+
+            setTimeout(function() {
+                toast.remove();
+            }, 7000);
+        }
+
+        window.__showInAppToast = showInAppToast;
+
+        if (!('Notification' in window)) {
+            console.log('Notifications not supported in this browser');
+            return;
+        }
+
+        if (window.__assignmentNotificationPollingStarted) {
+            return;
+        }
+        window.__assignmentNotificationPollingStarted = true;
+
+        const webPushPublicKey = "{{ web_push_public_key }}";
+
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
+        }
+
+        // Register Service Worker for background notifications
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/service-worker.js')
+                .then(reg => {
+                    console.log('[App] Service Worker registered:', reg);
+                })
+                .catch(err => {
+                    console.log('[App] Service Worker registration failed:', err);
+                });
+        }
+
+        async function ensurePushSubscription() {
+            if (!webPushPublicKey || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+                return;
+            }
+
+            try {
+                const registration = await navigator.serviceWorker.ready;
+                let subscription = await registration.pushManager.getSubscription();
+
+                if (!subscription) {
+                    subscription = await registration.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: urlBase64ToUint8Array(webPushPublicKey)
+                    });
+                }
+
+                await fetch('/api/push/subscribe', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(subscription.toJSON())
+                });
+                console.log('[App] Web push subscription ready');
+            } catch (error) {
+                console.warn('[App] Failed to set up web push subscription:', error);
+            }
+        }
+
+        // Request notification permission upfront
+        if (Notification.permission === 'default') {
+            console.log('[App] Requesting notification permission...');
+            Notification.requestPermission().then(permission => {
+                console.log('[App] Notification permission response:', permission);
+                if (permission === 'granted') {
+                    ensurePushSubscription();
+                }
+            });
+        } else {
+            console.log('[App] Notification permission already set to:', Notification.permission);
+            if (Notification.permission === 'granted') {
+                ensurePushSubscription();
+            }
+        }
+
+        async function showSystemNotification(title, body) {
+            try {
+                if ('serviceWorker' in navigator) {
+                    const registration = await navigator.serviceWorker.getRegistration('/static/service-worker.js')
+                        || await navigator.serviceWorker.ready;
+                    await registration.showNotification(title, {
+                        body,
+                        icon: '/static/images/light-logo.png',
+                        badge: '/static/images/logo.png',
+                        tag: 'daily-assignments',
+                        renotify: true,
+                        requireInteraction: true
+                    });
+                    console.log('[App] ServiceWorker notification shown');
+                    return;
+                }
+            } catch (error) {
+                console.warn('[App] ServiceWorker notification failed, falling back:', error);
+            }
+
+            const notification = new Notification(title, {
+                body,
+                tag: 'daily-assignments'
+            });
+            notification.onclick = () => window.focus();
+            console.log('[App] Fallback notification shown');
+        }
+
+        async function pollPendingNotifications() {
+            console.log('[App] Polling notifications... permission:', Notification.permission);
+            
+            if (Notification.permission !== 'granted') {
+                console.log('[App] Notification permission not granted, skipping poll');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/notifications/pending', {
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json' }
+                });
+
+                if (!response.ok) {
+                    console.log('[App] Fetch failed with status:', response.status);
+                    return;
+                }
+                const pending = await response.json();
+                console.log('[App] Pending notifications:', pending);
+                if (!Array.isArray(pending)) {
+                    console.log('[App] Response is not an array');
+                    return;
+                }
+
+                for (const item of pending) {
+                    console.log('[App] Creating notification:', item.title);
+                    
+                    // Show in-app toast
+                    showInAppToast(item.title);
+
+                    showSystemNotification(item.title, item.body);
+                }
+            } catch (err) {
+                console.warn('[App] Notification polling failed:', err);
+            }
+        }
+
+        pollPendingNotifications();
+        setInterval(pollPendingNotifications, 60000);
+    });
+</script>
+{% endif %}
 </body>

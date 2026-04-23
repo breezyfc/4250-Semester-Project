@@ -26,6 +26,21 @@
             <button type="submit">Update Password</button>
         </form>
 
+        <form method="POST" class="account-form">
+            <h3>Browser & PC Notifications</h3>
+            <label style="display: flex; align-items: center; gap: 8px; margin: 8px 0;">
+                <input type="checkbox" name="notify_browser_enabled" {% if current_user.notify_browser_enabled %}checked{% endif %}>
+                Enable browser & PC notifications
+            </label>
+            <label style="display: block; margin-top: 8px; font-weight: 600;">Remind me this many hours before due:</label>
+            <input type="number" step="any" name="notify_hours_before" value="{{ notify_hours_before or 1 }}">
+            <button type="submit">Save Notification Settings</button>
+            <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;">
+                <button type="button" id="testBrowserNotificationBtn">Test Browser Notification</button>
+            </div>
+            <div id="notificationTestStatus" style="margin-top: 10px; font-size: 0.9rem; color: #666;"></div>
+        </form>
+
         <!-- D2L Calendar -->
         <form method="POST" class="account-form">
             <div class="section-title-row">
@@ -95,7 +110,6 @@
             });
         });
         </script>
-        </form>
 
         <!-- Logout -->
         <a href="{{ url_for('logout') }}" class="logout-link">
@@ -151,5 +165,113 @@ window.addEventListener("click", function(e) {
         setTheme(newTheme);
     });
 </script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const testBrowserBtn = document.getElementById('testBrowserNotificationBtn');
+    const statusEl = document.getElementById('notificationTestStatus');
+
+    function setStatus(message, isError) {
+        if (!statusEl) return;
+        statusEl.textContent = message;
+        statusEl.style.color = isError ? '#b3261e' : '#2e7d32';
+    }
+
+    async function postTestNotification(channel) {
+        const response = await fetch('/api/notifications/test', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ channel })
+        });
+
+        const data = await response.json();
+        if (!response.ok || !data.ok) {
+            throw new Error(data.error || 'Notification test failed');
+        }
+        return data;
+    }
+
+    async function showSystemNotification(title, body) {
+        try {
+            if ('serviceWorker' in navigator) {
+                const registration = await navigator.serviceWorker.getRegistration('/static/service-worker.js')
+                    || await navigator.serviceWorker.ready;
+                await registration.showNotification(title, {
+                    body,
+                    icon: '/static/images/light-logo.png',
+                    badge: '/static/images/logo.png',
+                    tag: 'daily-assignments-test',
+                    renotify: true,
+                    requireInteraction: true
+                });
+                console.log('[Test] ServiceWorker notification shown');
+                return;
+            }
+        } catch (error) {
+            console.warn('[Test] ServiceWorker notification failed, fallback:', error);
+        }
+
+        const notif = new Notification(title, { body, tag: 'daily-assignments-test' });
+        notif.onclick = () => window.focus();
+        console.log('[Test] Fallback notification shown');
+    }
+
+    if (testBrowserBtn) {
+        testBrowserBtn.addEventListener('click', async function() {
+            try {
+                console.log('[Test] Starting notification test...');
+                setStatus('Starting notification test...', false);
+                
+                if (!('Notification' in window)) {
+                    console.error('[Test] Notifications not supported');
+                    setStatus('Browser notifications are not supported in this browser.', true);
+                    return;
+                }
+                
+                console.log('[Test] Current permission:', Notification.permission);
+
+                let permission = Notification.permission;
+                if (permission !== 'granted') {
+                    console.log('[Test] Requesting permission...');
+                    permission = await Notification.requestPermission();
+                    console.log('[Test] Permission after request:', permission);
+                }
+                
+                if (permission !== 'granted') {
+                    console.error('[Test] Permission denied:', permission);
+                    setStatus('Notification permission was not granted. Current: ' + permission, true);
+                    return;
+                }
+
+                console.log('[Test] Creating first test notification...');
+                showSystemNotification(
+                    'Browser notifications enabled',
+                    'If you can see this, browser/PC notifications are working.'
+                );
+
+                const data = await postTestNotification('browser');
+                console.log('[Test] Creating second notification with data:', data);
+                showSystemNotification(
+                    data.title || 'Test Notification',
+                    data.body || 'This is a test browser reminder from Calendrier.'
+                );
+                console.log('[Test] Second notification shown');
+                
+                if (window.__showInAppToast) {
+                    window.__showInAppToast(data.body || 'This is a test browser reminder from Calendrier.');
+                }
+                
+                setStatus('✅ Notifications sent! Check your screen or notification area.', false);
+            } catch (err) {
+                console.error('[Test] Error:', err);
+                setStatus('❌ Error: ' + (err.message || 'Browser notification test failed.'), true);
+            }
+        });
+    }
+});
 </script>
 {% endblock %}

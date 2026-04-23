@@ -328,6 +328,29 @@ def extract_course_from_event(lines, title):
     return None
 
 
+def classify_event_kind(title, lines):
+    """Classify an ICS event as 'due' or 'available'."""
+    searchable = [title or ""]
+    for line in lines:
+        if ":" in line:
+            searchable.append(line.split(":", 1)[1])
+    text = " ".join(searchable).lower()
+
+    available_keywords = [
+        "available",
+        "opens",
+        "open",
+        "start date",
+        "begins",
+        "released",
+    ]
+
+    for token in available_keywords:
+        if token in text:
+            return "available"
+    return "due"
+
+
 def sync_assignments(user):
     """
     Fetches assignments from user's ICS calendar feed and syncs to database.
@@ -417,6 +440,7 @@ def sync_assignments(user):
 
         # Extract assignment type from DESCRIPTION field
         assignment_type = extract_assignment_type(lines, title)
+        event_kind = classify_event_kind(title, lines)
 
         # Check if assignment already exists in database
         existing = None
@@ -440,6 +464,7 @@ def sync_assignments(user):
             existing.course = course
             existing.course_id = course_id
             existing.assignment_type = assignment_type
+            existing.event_kind = event_kind
             # Generate color for this course
             existing.color = generate_course_color(course_id)
             # Set default priority based on assignment type if not already set
@@ -459,6 +484,7 @@ def sync_assignments(user):
                 course_id=course_id,
                 due_time=due_time,
                 assignment_type=assignment_type,
+                event_kind=event_kind,
                 priority_level=default_priority,  # Set based on assignment type
                 points=None,  # Not provided by calendar
                 color=generate_course_color(course_id)  # Assign consistent color per course

@@ -11,16 +11,36 @@ if project_root not in sys.path:
     sys.path.append(project_root)
 
 
-from flask import Flask, render_template, request, flash, redirect, url_for
+from flask import Flask, render_template, request, flash, redirect, url_for, jsonify
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
-from app.models import db, User, Assignment, CourseColor
+from app.models import db, User, Assignment, CourseColor, NotificationLog, PushSubscription
 from sqlalchemy import text
 from flask_application.sync import sync_assignments
+from datetime import date, datetime, timedelta
+import threading
+import time
+import json
+
+try:
+    from plyer import notification as plyer_notification
+except Exception:
+    plyer_notification = None
+
+try:
+    from pywebpush import webpush, WebPushException
+except Exception:
+    webpush = None
+    WebPushException = Exception
 
 # Initialize Flask application
 app = Flask(__name__)
 # Secret key for session management and CSRF protection
 app.secret_key = 'key'  # TODO: Use environment variable in production
+
+VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "").strip()
+VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "").strip()
+VAPID_PRIVATE_KEY_PATH = os.environ.get("VAPID_PRIVATE_KEY_PATH", "").strip()
+VAPID_SUBJECT = os.environ.get("VAPID_SUBJECT", "mailto:admin@example.com").strip()
 
 # FastAPI backend server URL for making requests to assignment API
 URL = 'http://127.0.0.1:8000'
@@ -54,12 +74,263 @@ with app.app_context():
         db.session.execute(text("ALTER TABLE assignments ADD COLUMN ics_uid VARCHAR(255)"))
         db.session.commit()
 
+    if "event_kind" not in assignment_col_names:
+        db.session.execute(text("ALTER TABLE assignments ADD COLUMN event_kind VARCHAR(20) DEFAULT 'due'"))
+        db.session.commit()
+
+    user_cols = db.session.execute(text("PRAGMA table_info(users)")).fetchall()
+    user_col_names = {col[1] for col in user_cols}
+
+    if "notify_browser_enabled" not in user_col_names:
+        db.session.execute(text("ALTER TABLE users ADD COLUMN notify_browser_enabled BOOLEAN DEFAULT 1"))
+        db.session.commit()
+
+    if "notify_minutes_before" not in user_col_names:
+        db.session.execute(text("ALTER TABLE users ADD COLUMN notify_minutes_before INTEGER DEFAULT 60"))
+        db.session.commit()
+
 # Setup Flask-Login for user authentication
 login_manager = LoginManager(app)
 # Redirect unauthenticated users to login page
 login_manager.login_view = 'login'
 # Set flash message category for login messages
 login_manager.login_message_category = 'error'
+
+
+def _is_available_event(assignment):
+    if assignment.event_kind == "available":
+        return True
+    name = (assignment.name or "").lower()
+    return "available" in name or "opens" in name
+
+
+def _assignment_due_datetime(assignment):
+    if not assignment.due_date:
+        return None
+    try:
+        due_day = datetime.strptime(str(assignment.due_date), "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+    due_time_value = assignment.due_time or "23:59:00"
+    try:
+        due_time_obj = datetime.strptime(due_time_value, "%H:%M:%S").time()
+    except ValueError:
+        try:
+            due_time_obj = datetime.strptime(due_time_value, "%H:%M").time()
+        except ValueError:
+            due_time_obj = datetime.strptime("23:59:00", "%H:%M:%S").time()
+
+    return datetime.combine(due_day, due_time_obj)
+
+
+def _send_windows_notification(title, body):
+    if os.name != "nt" or plyer_notification is None:
+        return False
+
+    try:
+        truncated_body = (body or "")[:240]
+        plyer_notification.notify(
+            title=title or "Assignment Reminder",
+            message=truncated_body,
+            timeout=10,
+            app_name="Calendrier",
+        )
+        return True
+    except Exception as exc:
+        print(f"[WARN] Windows notification failed: {exc}")
+        return False
+
+
+def _web_push_enabled():
+    return bool(VAPID_PUBLIC_KEY and _get_vapid_private_key() and webpush is not None)
+
+
+def _get_vapid_private_key():
+    if VAPID_PRIVATE_KEY:
+        return VAPID_PRIVATE_KEY.replace("\\n", "\n")
+    if VAPID_PRIVATE_KEY_PATH and os.path.exists(VAPID_PRIVATE_KEY_PATH):
+        try:
+            with open(VAPID_PRIVATE_KEY_PATH, "r", encoding="utf-8") as file_obj:
+                return file_obj.read().strip()
+        except Exception as exc:
+            print(f"[WARN] Failed to read VAPID private key file: {exc}")
+    return ""
+
+
+def _send_web_push_to_user(user_id, title, body):
+    if not _web_push_enabled():
+        return 0
+
+    subscriptions = PushSubscription.query.filter_by(user_id=user_id).all()
+    if not subscriptions:
+        return 0
+
+    payload = json.dumps({
+        "title": title,
+        "body": body,
+        "url": "/",
+        "tag": "daily-assignments",
+    })
+    vapid_private_key = _get_vapid_private_key()
+
+    sent_count = 0
+    stale_ids = []
+
+    for sub in subscriptions:
+        try:
+            webpush(
+                subscription_info={
+                    "endpoint": sub.endpoint,
+                    "keys": {
+                        "p256dh": sub.p256dh,
+                        "auth": sub.auth,
+                    },
+                },
+                data=payload,
+                vapid_private_key=vapid_private_key,
+                vapid_claims={"sub": VAPID_SUBJECT},
+            )
+            sent_count += 1
+        except WebPushException as exc:
+            status_code = getattr(getattr(exc, "response", None), "status_code", None)
+            if status_code in (404, 410):
+                stale_ids.append(sub.id)
+            else:
+                print(f"[WARN] Web push send failed for user {user_id}: {exc}")
+        except Exception as exc:
+            print(f"[WARN] Web push send failed for user {user_id}: {exc}")
+
+    if stale_ids:
+        PushSubscription.query.filter(PushSubscription.id.in_(stale_ids)).delete(synchronize_session=False)
+        db.session.commit()
+
+    return sent_count
+
+
+def _build_daily_summary_for_user(user, now):
+    if not user.notify_browser_enabled:
+        return None, None
+
+    today_start = datetime.combine(now.date(), datetime.min.time())
+    tomorrow_start = today_start + timedelta(days=1)
+
+    existing_daily = NotificationLog.query.filter(
+        NotificationLog.user_id == user.id,
+        NotificationLog.channel == "daily",
+        NotificationLog.sent_at >= today_start,
+        NotificationLog.sent_at < tomorrow_start,
+    ).first()
+    if existing_daily:
+        return None, None
+
+    assignments_due_today = []
+    assignments = Assignment.query.filter(
+        Assignment.user_id == user.id,
+        Assignment.due_date.isnot(None)
+    ).all()
+
+    for assignment in assignments:
+        if _is_available_event(assignment):
+            continue
+        try:
+            due_date = datetime.strptime(str(assignment.due_date), "%Y-%m-%d").date()
+        except ValueError:
+            continue
+        if due_date == now.date():
+            assignments_due_today.append(assignment)
+
+    if not assignments_due_today:
+        return None, None
+
+    assignments_due_today.sort(key=lambda a: (a.course or "Uncategorized", a.name or ""))
+    count = len(assignments_due_today)
+    assignment_list = "\n".join([
+        f"• {a.name} ({a.course or 'No course'})"
+        for a in assignments_due_today
+    ])
+
+    notification = {
+        "title": f"You have {count} assignment{'s' if count != 1 else ''} due today",
+        "body": assignment_list,
+        "assignments": [{
+            "assignment_id": a.id,
+            "title": a.name,
+            "course": a.course,
+        } for a in assignments_due_today]
+    }
+    return notification, assignments_due_today[0].id
+
+
+def _record_daily_notification_sent(user_id, assignment_id, now):
+    existing_daily_key = NotificationLog.query.filter_by(
+        user_id=user_id,
+        assignment_id=assignment_id,
+        channel="daily",
+    ).first()
+
+    if existing_daily_key:
+        existing_daily_key.sent_at = now
+    else:
+        db.session.add(NotificationLog(
+            user_id=user_id,
+            assignment_id=assignment_id,
+            channel="daily",
+            sent_at=now,
+        ))
+
+    try:
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        print(f"[WARN] Failed to persist daily notification log for user {user_id}: {exc}")
+
+
+def _sync_all_users():
+    """Background job to sync assignments from all users' ICS feeds every hour."""
+    users = User.query.all()
+    for user in users:
+        if user.ics_url:
+            try:
+                sync_assignments(user)
+            except Exception as e:
+                print(f"[WARN] Auto-sync failed for user {user.id}: {e}")
+
+
+def _hourly_ics_sync():
+    while True:
+        try:
+            with app.app_context():
+                users_with_ics = User.query.filter(User.ics_url.isnot(None)).all()
+                for user in users_with_ics:
+                    sync_assignments(user)
+                    notification, assignment_id = _build_daily_summary_for_user(user, datetime.now())
+                    if notification and assignment_id:
+                        _send_web_push_to_user(user.id, notification["title"], notification["body"])
+                        _record_daily_notification_sent(user.id, assignment_id, datetime.now())
+                print(f"[INFO] Hourly ICS sync complete for {len(users_with_ics)} users")
+        except Exception as exc:
+            print(f"[WARN] Hourly ICS sync failed: {exc}")
+        time.sleep(3600)
+
+
+def _queue_due_notifications():
+    """Background worker for queuing notifications. Disabled in browser-only mode."""
+    pass
+
+
+def _start_background_workers_once():
+    if app.config.get("TESTING"):
+        return
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return
+    if app.debug and os.environ.get("WERKZEUG_RUN_MAIN") != "true":
+        return
+    if getattr(app, "_background_workers_started", False):
+        return
+    sync_worker = threading.Thread(target=_hourly_ics_sync, daemon=True)
+    sync_worker.start()
+    app._background_workers_started = True
 
 
 # ============================================================================
@@ -92,13 +363,31 @@ def account():
                     db.session.add(CourseColor(user_id=current_user.id, course=course, color=color))
                 # Update all assignments for this course
                 Assignment.query.filter_by(user_id=current_user.id, course=course).update({"color": color})
-        # Update password and ICS URL as before
-        new_password = request.form.get("password")
+        # Update password and ICS URL
+        new_password = request.form.get("new_password") or request.form.get("password")
         ics_url = request.form.get("ics_url")
+        notify_browser_enabled = request.form.get("notify_browser_enabled") == "on"
+        notify_hours_before = request.form.get("notify_hours_before")
         if new_password:
             current_user.set_password(new_password)
         if ics_url:
             current_user.ics_url = ics_url
+
+        if "notify_browser_enabled" in request.form or "notify_hours_before" in request.form or "notify_minutes_before" in request.form:
+            current_user.notify_browser_enabled = notify_browser_enabled
+            try:
+                raw_hours = notify_hours_before if notify_hours_before is not None else request.form.get("notify_minutes_before")
+                if raw_hours is None or str(raw_hours).strip() == "":
+                    minutes_int = 60
+                elif "notify_hours_before" in request.form:
+                    hours_float = float(raw_hours)
+                    minutes_int = int(hours_float * 60)
+                else:
+                    minutes_int = int(raw_hours)
+                current_user.notify_minutes_before = max(0, minutes_int)
+            except ValueError:
+                current_user.notify_minutes_before = 60
+
         db.session.commit()
         flash("Account updated!", "success")
         return redirect(url_for("account"))
@@ -107,8 +396,52 @@ def account():
     course_names = set([a.course for a in Assignment.query.filter_by(user_id=current_user.id).all() if a.course])
     course_colors = {c.course: c.color for c in CourseColor.query.filter_by(user_id=current_user.id).all()}
     courses = [(course, course_colors.get(course, "#517664")) for course in sorted(course_names)]
+    notify_hours_before = round((current_user.notify_minutes_before or 60) / 60, 2)
     print("[DEBUG] Course colors for account page:", courses)
-    return render_template("account.html", courses=courses)
+    return render_template(
+        "account.html",
+        courses=courses,
+        notify_hours_before=notify_hours_before,
+    )
+
+
+@app.context_processor
+def inject_push_config():
+    return {
+        "web_push_public_key": VAPID_PUBLIC_KEY if _web_push_enabled() else "",
+    }
+
+
+@app.route("/api/push/subscribe", methods=["POST"])
+@login_required
+def push_subscribe():
+    if not _web_push_enabled():
+        return jsonify({"ok": False, "error": "Web push is not configured on this server."}), 503
+
+    data = request.get_json(silent=True) or {}
+    endpoint = data.get("endpoint")
+    keys = data.get("keys") or {}
+    p256dh = keys.get("p256dh")
+    auth = keys.get("auth")
+
+    if not endpoint or not p256dh or not auth:
+        return jsonify({"ok": False, "error": "Invalid push subscription payload."}), 400
+
+    subscription = PushSubscription.query.filter_by(endpoint=endpoint).first()
+    if subscription:
+        subscription.user_id = current_user.id
+        subscription.p256dh = p256dh
+        subscription.auth = auth
+    else:
+        db.session.add(PushSubscription(
+            user_id=current_user.id,
+            endpoint=endpoint,
+            p256dh=p256dh,
+            auth=auth,
+        ))
+
+    db.session.commit()
+    return jsonify({"ok": True})
 
 # 3 routes -- login, logout, register
 # REGISTER PAGE - Allows new users to create an account
@@ -201,7 +534,6 @@ def logout():
 @app.route('/')
 @login_required  # Require user to be logged in
 def index():
-    from datetime import date
     # Query all assignments for current user, sorted by due date, only today or future
     today = date.today()
     assignments = Assignment.query.filter(
@@ -227,6 +559,7 @@ def index():
             "assignment_type": a.assignment_type,
             "points": a.points,
             "ics_uid": a.ics_uid,
+            "event_kind": a.event_kind,
         }
     assignments_dict = [assignment_to_dict(a) for a in assignments]
     return render_template('index.html', assignments=assignments_dict)
@@ -247,7 +580,8 @@ def new_assignment():
         "due_time": None,  # Not provided in this form
         "assignment_type": None,  # Not provided in this form
         "points": None,  # Not provided in this form
-        "color": request.form.get("class_color") or "#517664"  # Course color from form
+        "color": request.form.get("class_color") or "#517664",  # Course color from form
+        "event_kind": "due"
     }
     course = data["course"]
     color = data["color"]
@@ -281,6 +615,7 @@ def new_assignment():
         assignment_type=data["assignment_type"],
         points=data["points"],
         color=data["color"],
+        event_kind=data["event_kind"],
     )
     db.session.add(new)
     db.session.commit()
@@ -376,7 +711,7 @@ def about():
 
     assignments = []
     for a in raw_assignments:
-        if hide_available and a.name and 'available' in a.name.lower():
+        if hide_available and _is_available_event(a):
             continue
         normalized_date = normalize_date(a.due_date)
         if not normalized_date:
@@ -394,6 +729,7 @@ def about():
             'points': a.points,
             'ics_uid': a.ics_uid,
             'color': color,
+            'event_kind': a.event_kind,
         })
     return render_template("calendar.html", assignments=assignments)
 
@@ -439,7 +775,7 @@ def assignment():
 
     assignments = []
     for a in raw_assignments:
-        if hide_available and a.name and 'available' in a.name.lower():
+        if hide_available and _is_available_event(a):
             continue
         assignments.append(a)
 
@@ -448,6 +784,35 @@ def assignment():
 
 
 # APPLICATION ENTRY POINT
+@app.route("/api/notifications/pending")
+@login_required
+def pending_notifications():
+    notification, assignment_id = _build_daily_summary_for_user(current_user, datetime.now())
+    if not notification or not assignment_id:
+        return jsonify([])
+
+    _send_windows_notification(notification["title"], notification["body"])
+    _send_web_push_to_user(current_user.id, notification["title"], notification["body"])
+    _record_daily_notification_sent(current_user.id, assignment_id, datetime.now())
+    return jsonify([notification])
+
+
+@app.route("/api/notifications/test", methods=["POST"])
+@login_required
+def test_notifications():
+    test_body = "• Test Assignment 1 (CS 101)\n• Test Assignment 2 (MATH 201)\n• Test Assignment 3 (CS 101)"
+    test_title = "You have 3 assignments due today"
+    _send_windows_notification(test_title, test_body)
+    _send_web_push_to_user(current_user.id, test_title, test_body)
+    return jsonify({
+        "ok": True,
+        "title": test_title,
+        "body": test_body,
+    })
+
+
+_start_background_workers_once()
+
 if __name__ == '__main__':
     # Run Flask development server
     # debug=True enables auto-reload and better error pages

@@ -4,6 +4,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime
 
 # Initialize SQLAlchemy database instance (will be attached to Flask app in server.py)
 db = SQLAlchemy()
@@ -40,6 +41,10 @@ class User(UserMixin, db.Model):
 
     # ICS calendar URL - URL to external calendar feed for syncing assignments
     ics_url = db.Column(db.String(500))
+
+    # Notification preferences
+    notify_browser_enabled = db.Column(db.Boolean, default=True)
+    notify_minutes_before = db.Column(db.Integer, default=60)
 
     def set_password(self, password):
         """
@@ -109,3 +114,35 @@ class Assignment(db.Model):
 
     # Course color for calendar/UI display (hex color code like #517664)
     color = db.Column(db.String(7), nullable=True, default="#517664")
+
+    # Event kind used for notification filtering (e.g. due vs available)
+    event_kind = db.Column(db.String(20), nullable=False, default="due")
+
+
+class NotificationLog(db.Model):
+    __tablename__ = "notification_logs"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    assignment_id = db.Column(db.Integer, db.ForeignKey("assignments.id"), nullable=False, index=True)
+    channel = db.Column(db.String(20), nullable=False)  # email or browser
+    sent_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "assignment_id", "channel", name="_user_assignment_channel_uc"),
+    )
+
+
+class PushSubscription(db.Model):
+    __tablename__ = "push_subscriptions"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    endpoint = db.Column(db.String(1000), nullable=False, unique=True)
+    p256dh = db.Column(db.String(255), nullable=False)
+    auth = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "endpoint", name="_user_endpoint_uc"),
+    )

@@ -124,7 +124,11 @@
         }
 
         if (hideAvailableToggle.checked) {
-          filtered = filtered.filter(a => !(a.name && a.name.toLowerCase().includes('available')));
+          filtered = filtered.filter(a => {
+            const byKind = (a.event_kind || '').toLowerCase() === 'available';
+            const byName = a.name && a.name.toLowerCase().includes('available');
+            return !(byKind || byName);
+          });
         }
 
         if (courseFilter.value) {
