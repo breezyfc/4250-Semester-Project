@@ -81,6 +81,31 @@ def _public_vapid_key_from_private_pem(private_pem):
         return ""
 
 
+def _sanitize_private_key_text(private_key_text):
+    if not private_key_text:
+        return ""
+
+    sanitized = str(private_key_text).strip()
+
+    if (sanitized.startswith('"') and sanitized.endswith('"')) or (
+        sanitized.startswith("'") and sanitized.endswith("'")
+    ):
+        sanitized = sanitized[1:-1].strip()
+
+    sanitized = sanitized.replace("\\r\\n", "\n").replace("\\n", "\n")
+    return sanitized
+
+
+def _is_valid_vapid_private_key(private_key_text):
+    if not private_key_text or Vapid is None:
+        return False
+    try:
+        Vapid.from_string(private_key_text)
+        return True
+    except Exception:
+        return False
+
+
 def _init_vapid_keys():
     global VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_PRIVATE_KEY_PATH
 
@@ -89,13 +114,17 @@ def _init_vapid_keys():
 
     configured_private = ""
     if VAPID_PRIVATE_KEY:
-        configured_private = VAPID_PRIVATE_KEY.replace("\\n", "\n")
+        configured_private = _sanitize_private_key_text(VAPID_PRIVATE_KEY)
     elif VAPID_PRIVATE_KEY_PATH and os.path.exists(VAPID_PRIVATE_KEY_PATH):
         try:
             with open(VAPID_PRIVATE_KEY_PATH, "r", encoding="utf-8") as file_obj:
-                configured_private = file_obj.read().strip()
+                configured_private = _sanitize_private_key_text(file_obj.read().strip())
         except Exception as exc:
             print(f"[WARN] Failed to read VAPID private key file: {exc}")
+
+    if configured_private and not _is_valid_vapid_private_key(configured_private):
+        print("[WARN] Configured VAPID private key is invalid; auto-generating a replacement key pair.")
+        configured_private = ""
 
     if VAPID_PUBLIC_KEY and configured_private:
         VAPID_PRIVATE_KEY = configured_private
@@ -313,11 +342,13 @@ def _web_push_enabled():
 
 def _get_vapid_private_key():
     if VAPID_PRIVATE_KEY:
-        return VAPID_PRIVATE_KEY.replace("\\n", "\n")
+        candidate = _sanitize_private_key_text(VAPID_PRIVATE_KEY)
+        return candidate if _is_valid_vapid_private_key(candidate) else ""
     if VAPID_PRIVATE_KEY_PATH and os.path.exists(VAPID_PRIVATE_KEY_PATH):
         try:
             with open(VAPID_PRIVATE_KEY_PATH, "r", encoding="utf-8") as file_obj:
-                return file_obj.read().strip()
+                candidate = _sanitize_private_key_text(file_obj.read().strip())
+                return candidate if _is_valid_vapid_private_key(candidate) else ""
         except Exception as exc:
             print(f"[WARN] Failed to read VAPID private key file: {exc}")
     return ""
